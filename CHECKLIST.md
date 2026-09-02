@@ -16,11 +16,11 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 - [x] `CLAUDE.md` + `CHECKLIST.md`
 - [x] commit `setup inicial do projeto`
 
-## Parte 1 — ETL / SQLite
-- [ ] `build_db.py`: lê os 6 CSVs, normaliza tipos, cria tabelas + views (`v_produto`, `v_pedido_item`)
-- [ ] rodar → `emporio.db`; conferir contagens (products=64, orders=19, customers=50)
-- [ ] `test_agent.py`: asserts de sanidade nas views
-- [ ] commit `etl: csvs para sqlite com views`
+## Parte 1 — ETL / SQLite ✅
+- [x] `build_db.py`: lê os 6 CSVs, normaliza tipos, cria tabelas + views (`v_produto`, `v_pedido_item`)
+- [x] rodar → `emporio.db`; contagens conferidas (products=**65**, orders=**20**, customers=50)
+- [x] `test_agent.py`: asserts de sanidade nas views (Takamine GD20, produto 96 sem estoque, promo do 127 sem PIX cumulativo)
+- [x] commit `etl: csvs para sqlite com views`
 
 ## Parte 2 — Políticas
 - [ ] `policies.md`: PDF convertido, seccionado por `##`, inconsistências anotadas

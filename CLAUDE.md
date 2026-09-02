@@ -77,9 +77,11 @@ andamento**; Partes 1-8 pendentes.
 
 ## 6. Armadilhas dos dados (descobertas na exploração)
 
-- `products.csv`: IDs **fora de ordem** (81-130, depois 131-145). `price_brl` mistura int e
-  decimal. `status` ∈ {active, discontinued (113, 136), coming_soon (130)}. Alguns `active`
-  têm `stock_quantity = 0` (ex.: produto 96) → "disponível" = `active` **E** `stock > 0`.
+- `products.csv`: 65 produtos, IDs 81–145 **sem buracos**, mas as **linhas do CSV estão fora
+  de ordem** (81–130, depois 145, depois 131–144) — ordenar por `product_id` sempre.
+  `price_brl` mistura int e decimal. `status` ∈ {active (62), discontinued (113, 136),
+  coming_soon (130)}. Alguns `active` têm `stock_quantity = 0` (ex.: produto 96) →
+  "disponível" = `active` **E** `stock > 0` (61 disponíveis, 4 com promoção ativa).
 - `products.csv`: **nomes sintéticos inconsistentes com a descrição** (ex.: "Music Man Bass
   1X Electric Bass" com descrição de "Fender Jazz Bass"; teclados idem). → confiar nos
   campos estruturados (name, price, category, stock, status); tratar `description` como
@@ -89,9 +91,9 @@ andamento**; Partes 1-8 pendentes.
 - `promotions.csv`: `is_active = 1` só em 4 linhas (produtos 90, 94, 121, 127). Vários
   produtos têm **múltiplas linhas** de promoção → agregar (maior `discount_percent` entre as
   ativas).
-- `orders.csv`: `tracking_code` / `estimated_delivery` só existem para status
-  `delivered`/`shipped`. `notes` só para `cancelled`. **Não há data de entrega efetiva.**
-  Todos os pedidos são de out/2025 a mar/2026 → ver `DATA_REFERENCE_DATE` (decisão #4).
+- `orders.csv`: 20 pedidos (IDs 1–20). `tracking_code` / `estimated_delivery` só existem
+  para status `delivered`/`shipped`. `notes` só para `cancelled`. **Não há data de entrega
+  efetiva.** Todos os pedidos são de out/2025 a mar/2026 → ver `DATA_REFERENCE_DATE` (decisão #4).
 - `políticas_da_loja.pdf`: **duas versões do WhatsApp** — (67) 3341-4444 (pág. 2, seção 1.2)
   e (67) 3321-4500 (pág. 6, seção 7). E-mail aparece com e sem acento. → `policies.md` usa
   os dados da seção 1.2 como canônicos e anota a divergência.
