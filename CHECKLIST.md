@@ -52,17 +52,21 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 - [ ] validar multi-turno + persistência ao vivo (reabrir mesmo `thread_id`) — junto com a Parte 4b
 - [x] commit `ui streamlit`
 
-## Parte 6 — Exemplos de interação
-- [ ] 3-5 conversas em `examples/*.md`: catálogo c/ filtro de preço · preço pontual · info da loja · **devolução aplicando política + dados do pedido (não trivial)** · fora de escopo/acessório
+## Parte 6 — Exemplos de interação ✅ (script) · ⏳ gerar transcripts
+- [x] `run_examples.py`: 5 cenários roteirizados, roda o agente de verdade, salva `examples/*.md` com as chamadas de ferramenta visíveis
+- [x] `examples/README.md`
+- [ ] **Pedro: `python run_examples.py` com LM Studio no ar** → revisar → commitar os `.md`
 - [ ] commit `exemplos de interacao`
 
-## Parte 7 — README
-- [ ] como rodar (pré-req LM Studio + modelo, comandos)
-- [ ] justificativas de todas as decisões técnicas
-- [ ] limitações conhecidas + "com mais tempo"
-- [ ] uso de IA (Claude Code — workflow)
-- [ ] `pip freeze` → pinar versões em `requirements.txt`
-- [ ] commit `readme completo`
+## Parte 7 — README ✅ (rascunho) · ⏳ ajuste pós-smoke-test
+- [x] como rodar (pré-req LM Studio + modelo, comandos, `.env`)
+- [x] arquitetura + as 4 tools
+- [x] justificativas das 9 decisões técnicas
+- [x] limitações conhecidas + "com mais tempo"
+- [x] uso de IA (Claude Code — workflow: entrevista pergunta a pergunta, execução por partes)
+- [ ] revisar após o smoke test (nome do modelo real, comportamentos observados)
+- [ ] `pip freeze` → pinar versões em `requirements.txt` (Parte 8)
+- [x] commit `readme completo`
 
 ## Parte 8 — Fechamento
 - [ ] revisar histórico de commits
