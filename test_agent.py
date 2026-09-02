@@ -94,8 +94,17 @@ def test_status_pedido():
     assert "Não encontrei" in status_pedido.invoke({"order_id": 999, "identificador": "x"})
 
 
+def test_agente_compila():
+    """O grafo monta, as 4 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
+    from agent import build_agent
+    from tools import TOOLS
+    a = build_agent()
+    assert a.__class__.__name__ == "CompiledStateGraph"
+    assert len(TOOLS) == 4
+
+
 TESTS = [test_etl_views, test_consultar_politica, test_buscar_produtos,
-         test_detalhe_produto, test_status_pedido]
+         test_detalhe_produto, test_status_pedido, test_agente_compila]
 
 
 def main():

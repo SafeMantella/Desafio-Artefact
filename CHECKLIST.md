@@ -34,11 +34,17 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 - [x] asserts: violões ≤ R$1000 disponíveis; GD20→R$2.199 + PIX; promo do 127; ambiguidade "Yamaha"; pedido 5 nome/e-mail certo vs errado; pedido inexistente
 - [x] commit `tools de dados: produtos e pedidos`
 
-## Parte 4 — Agente
-- [ ] `prompts.py`: persona + regras (escopo, guardrails preço/estoque, promoções, LGPD, quando usar cada tool, resposta curta estilo WhatsApp)
-- [ ] `agent.py`: `ChatOpenAI(base_url=...)` + `create_react_agent(model, tools, checkpointer, prompt)` + `SqliteSaver`
-- [ ] smoke test com LM Studio ligado: 4 cenários do PDF + fora de escopo + acessório
-- [ ] commit `agente react com langgraph + persona`
+## Parte 4 — Agente ✅ (código) · ⏳ smoke test ao vivo
+- [x] `prompts.py`: persona (política 7.1) + escopo + guardrails preço/estoque/promoção + fluxo troca + LGPD + estilo WhatsApp + data de referência
+- [x] `agent.py`: `ChatOpenAI(base_url=LM Studio)` + `create_react_agent` + `SqliteSaver(emporio.db)`; helper `responder()`; REPL em `python agent.py`
+- [x] `test_agent.py::test_agente_compila` — grafo monta, 4 tools, checkpointer cria tabelas (sem LLM)
+- [ ] **smoke test ao vivo** (Pedro: subir LM Studio) — ver Parte 4b
+- [x] commit `agente react com langgraph + persona`
+
+## Parte 4b — Smoke test ao vivo
+- [ ] LM Studio: carregar modelo com tool use (ex.: Qwen2.5-7B-Instruct), Start Server, ajustar `MODEL` no `.env`
+- [ ] `python agent.py` e testar: "violões até R$1000?" · "quanto custa o Takamine GD20?" · "endereço/horário?" · "me arrependi do pedido 8" (→ identificação → política) · "vendem cordas?" · "capital da França?"
+- [ ] afinar prompt/tools conforme o comportamento do modelo
 
 ## Parte 5 — Streamlit
 - [ ] `app.py`: chat, `thread_id` em `session_state`, botão "nova conversa", aviso se LM Studio offline
