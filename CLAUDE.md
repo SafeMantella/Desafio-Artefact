@@ -27,7 +27,7 @@ Entregáveis: repo público + `README.md` (setup + justificativas + limitações
 | # | Decisão | Escolha | Porquê (resumo) |
 |---|---------|---------|-----------------|
 | 1 | Abordagem do agente | ReAct com **LangChain + LangGraph** (`langgraph.prebuilt.create_react_agent`) | Loop de raciocínio/tool pronto; LangChain é padrão de mercado. Fallback text-ReAct se o tool calling do modelo local for fraco. |
-| 2 | Políticas (PDF) | Tool `consultar_politica(topico)` sobre `policies.md` seccionado | Doc tem ~4k tokens / 10 seções. RAG com vector DB é over-engineering nessa escala. |
+| 2 | Políticas (PDF) | `pymupdf4llm` converte o PDF → `policies_raw.md`; curadoria leve → `policies.md`; tool `consultar_politica(topico)` retorna seção por palavra-chave | Doc tem ~4k tokens / 10 seções. RAG com vector DB é over-engineering nessa escala. |
 | 3 | Dados (CSVs) | ETL → **SQLite** (`emporio.db`) + views; SQL **parametrizado** nas tools (LLM não escreve SQL) | Mostra modelagem; joins/agregações limpos; sem risco de query gerada errada. |
 | 4 | Conceito de "hoje" | Config `DATA_REFERENCE_DATE` (default `2026-03-25`) | Dataset é snapshot; pedidos vão até 2026-03-22. Sem isso, toda política de prazo dá "vencido". |
 | 5 | Histórico de conversa | Checkpointer **`SqliteSaver`** do LangGraph, por `thread_id` | Persiste entre execuções, reaproveita o SQLite. Cliente volta e o agente lembra. |
@@ -50,7 +50,9 @@ Entregáveis: repo público + `README.md` (setup + justificativas + limitações
 ```
 config.py          paths, MODEL, OPENAI_BASE_URL, DATA_REFERENCE_DATE (lê .env)
 build_db.py        ETL: os 6 CSVs de data/ → emporio.db (tabelas + views)   [Parte 1]
-policies.md        políticas_da_loja.pdf convertido, seccionado por ##       [Parte 2]
+convert_policies.py  PDF de políticas → policies_raw.md (pymupdf4llm)         [Parte 2]
+policies_raw.md    saída bruta da conversão (artefato reproduzível)          [Parte 2]
+policies.md        policies_raw.md curado (headings limpos, divergências resolvidas) — usado pelo agente  [Parte 2]
 tools.py           as 4 tools LangChain (buscar_produtos, detalhe_produto,
                    status_pedido, consultar_politica)                        [Partes 2-3]
 prompts.py         system prompt / persona / regras                         [Parte 4]

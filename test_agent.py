@@ -6,7 +6,7 @@ Cobre a lógica não-trivial: views do ETL, retrieval de política e as tools de
 import sqlite3
 
 from config import DB_PATH
-from tools import consultar_politica
+from tools import buscar_produtos, consultar_politica, detalhe_produto, status_pedido
 
 
 def test_etl_views():
@@ -53,7 +53,49 @@ def test_consultar_politica():
     assert "Assuntos cobertos" in call("qual a cor favorita do vendedor?")
 
 
-TESTS = [test_etl_views, test_consultar_politica]
+def test_buscar_produtos():
+    r = buscar_produtos.invoke({"categoria": "violão", "preco_max": 1000})
+    assert "Tagima Memphis AC-39" in r          # 429,90 disponível
+    assert "Martin D-28" not in r               # 11.499 fora da faixa
+    assert "Giannini GF-3D Dreadnought" not in r  # produto 96: sem estoque
+
+    # sem o filtro de disponibilidade, o item sem estoque aparece marcado
+    r2 = buscar_produtos.invoke({"termo": "Giannini GF-3D", "apenas_disponiveis": False})
+    assert "GF-3D" in r2 and "SEM ESTOQUE" in r2
+
+    r3 = buscar_produtos.invoke({"termo": "nylon", "categoria": "ukulele", "preco_max": 300})
+    assert "Kala KA-15S" in r3
+
+
+def test_detalhe_produto():
+    r = detalhe_produto.invoke({"nome_ou_id": "Takamine GD20"})
+    assert "R$ 2.199,00" in r and "PIX" in r and "R$ 2.089,05" in r
+
+    # promoção ativa (produto 127) mostra preço promocional
+    r2 = detalhe_produto.invoke({"nome_ou_id": "127"})
+    assert "-10%" in r2 and "R$ 323,10" in r2
+
+    # ambiguidade -> lista de candidatos, não uma ficha
+    r3 = detalhe_produto.invoke({"nome_ou_id": "Yamaha"})
+    assert "mais de um produto" in r3
+
+
+def test_status_pedido():
+    # pedido 5: cliente 5 = Rafael Augusto Pereira / rafael.pereira@jmail.com, feito em 2026-01-05
+    ok = status_pedido.invoke({"order_id": 5, "identificador": "Rafael Pereira"})
+    assert "entregue" in ok and "há 79 dias" in ok  # ref = 2026-03-25
+
+    ok_email = status_pedido.invoke({"order_id": 5, "identificador": "rafael.pereira@jmail.com"})
+    assert "Pedido 5" in ok_email
+
+    nao = status_pedido.invoke({"order_id": 5, "identificador": "Fulano de Tal"})
+    assert "não posso liberar" in nao
+
+    assert "Não encontrei" in status_pedido.invoke({"order_id": 999, "identificador": "x"})
+
+
+TESTS = [test_etl_views, test_consultar_politica, test_buscar_produtos,
+         test_detalhe_produto, test_status_pedido]
 
 
 def main():

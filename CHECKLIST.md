@@ -23,15 +23,16 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 - [x] commit `etl: csvs para sqlite com views`
 
 ## Parte 2 — Políticas ✅
-- [x] `policies.md`: PDF convertido, 10 seções por `##`, divergências do PDF anotadas no topo (WhatsApp, e-mail)
+- [x] `convert_policies.py` (pymupdf4llm) → `policies_raw.md`; `policies.md` = curado, 10 seções por `##`, divergências do PDF resolvidas
 - [x] `tools.py::consultar_politica` — score por palavra-chave (word-boundary) + título, retorna 1-2 seções
 - [x] asserts: arrependimento→4; horário→2; cordas→1; pagamento→3; rastreio→5; garantia→8; tópico desconhecido→ajuda
-- [x] commit `tool de consulta a politicas`
+- [x] commit `tool de consulta a politicas` (+ `pymupdf4llm` no commit da Parte 3)
 
-## Parte 3 — Tools de dados
-- [ ] `buscar_produtos`, `detalhe_produto`, `status_pedido` (verificação leve de identidade)
-- [ ] asserts: violões ≤ R$1000 disponíveis; "Takamine GD20"→R$2199; pedido 5 e-mail certo vs errado; produto 96 indisponível
-- [ ] commit `tools de dados: produtos e pedidos`
+## Parte 3 — Tools de dados ✅
+- [x] `buscar_produtos` (filtro SQL parametrizado + match de termo em nome/specs), `detalhe_produto` (com desambiguação), `status_pedido` (verificação leve de identidade: e-mail exato OU todos os tokens do nome)
+- [x] `_brl()` formata moeda; `dias_desde_pedido` calculado contra `DATA_REFERENCE_DATE`
+- [x] asserts: violões ≤ R$1000 disponíveis; GD20→R$2.199 + PIX; promo do 127; ambiguidade "Yamaha"; pedido 5 nome/e-mail certo vs errado; pedido inexistente
+- [x] commit `tools de dados: produtos e pedidos`
 
 ## Parte 4 — Agente
 - [ ] `prompts.py`: persona + regras (escopo, guardrails preço/estoque, promoções, LGPD, quando usar cada tool, resposta curta estilo WhatsApp)

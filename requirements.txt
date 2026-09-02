@@ -5,3 +5,4 @@ langgraph-checkpoint-sqlite>=2.0
 streamlit>=1.30
 pandas>=2.0
 python-dotenv>=1.0
+pymupdf4llm>=0.0.17   # só para convert_policies.py (regenera policies_raw.md a partir do PDF)

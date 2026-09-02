@@ -1,8 +1,12 @@
 <!--
-policies.md — transcrição de data/políticas_da_loja.pdf (Manual de Políticas v2.1, jun/2025).
-Fonte de verdade para a tool consultar_politica(). Seccionado por "## " (uma seção por número).
+policies.md — políticas da loja, fonte de verdade para a tool consultar_politica().
+Seccionado por "## N. Título" (uma seção por número).
 
-NOTAS DE TRANSCRIÇÃO (divergências no PDF original — resolvidas aqui):
+PIPELINE: data/políticas_da_loja.pdf --(pymupdf4llm, convert_policies.py)--> policies_raw.md
+--(curadoria leve, manual)--> este arquivo. Curadoria = headings sem **bold**, rodapés de
+página removidos, tabelas normalizadas e as duas divergências abaixo resolvidas.
+
+DIVERGÊNCIAS no PDF original — resolvidas aqui:
 - WhatsApp: a seção 1.2 diz (67) 3341-4444; a seção 7 diz (67) 3321-4500. Adotado
   (67) 3341-4444 como número canônico (é o do quadro "Dados da Empresa"); a divergência
   fica registrada na seção 7.
