@@ -6,6 +6,7 @@ Cobre a lógica não-trivial: views do ETL, retrieval de política e as tools de
 import sqlite3
 
 from config import DB_PATH
+from tools import consultar_politica
 
 
 def test_etl_views():
@@ -38,7 +39,21 @@ def test_etl_views():
     conn.close()
 
 
-TESTS = [test_etl_views]
+def test_consultar_politica():
+    call = lambda t: consultar_politica.invoke({"topico": t})
+
+    assert call("me arrependi da compra, posso devolver?").startswith("## 4."), "arrependimento -> seção 4"
+    assert call("que horas a loja abre no sábado?").startswith("## 2."), "horário -> seção 2"
+    assert call("vocês vendem cordas de violão?").startswith("## 1."), "escopo/acessório -> seção 1"
+    assert call("quais as formas de pagamento?").startswith("## 3."), "pagamento -> seção 3"
+    assert call("como rastreio meu envio?").startswith("## 5."), "rastreamento -> seção 5"
+    assert call("qual a garantia do instrumento?").startswith("## 8."), "garantia -> seção 8 (não 4)"
+
+    # tópico não reconhecido -> mensagem de ajuda, não exceção
+    assert "Assuntos cobertos" in call("qual a cor favorita do vendedor?")
+
+
+TESTS = [test_etl_views, test_consultar_politica]
 
 
 def main():

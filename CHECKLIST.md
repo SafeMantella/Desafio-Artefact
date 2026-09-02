@@ -22,11 +22,11 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 - [x] `test_agent.py`: asserts de sanidade nas views (Takamine GD20, produto 96 sem estoque, promo do 127 sem PIX cumulativo)
 - [x] commit `etl: csvs para sqlite com views`
 
-## Parte 2 — Políticas
-- [ ] `policies.md`: PDF convertido, seccionado por `##`, inconsistências anotadas
-- [ ] `tools.py::consultar_politica` + mapa tópico→seção
-- [ ] asserts: "troca"→seção 4; "horário"→seção 2; "cordas"→seção 1 (escopo)
-- [ ] commit `tool de consulta a politicas`
+## Parte 2 — Políticas ✅
+- [x] `policies.md`: PDF convertido, 10 seções por `##`, divergências do PDF anotadas no topo (WhatsApp, e-mail)
+- [x] `tools.py::consultar_politica` — score por palavra-chave (word-boundary) + título, retorna 1-2 seções
+- [x] asserts: arrependimento→4; horário→2; cordas→1; pagamento→3; rastreio→5; garantia→8; tópico desconhecido→ajuda
+- [x] commit `tool de consulta a politicas`
 
 ## Parte 3 — Tools de dados
 - [ ] `buscar_produtos`, `detalhe_produto`, `status_pedido` (verificação leve de identidade)
