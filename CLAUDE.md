@@ -74,8 +74,9 @@ data/              dados fornecidos — NÃO alterar
 
 ## 5. Estado atual
 
-Ver `CHECKLIST.md` (fonte de verdade do progresso). Em resumo: **Parte 0 (setup) em
-andamento**; Partes 1-8 pendentes.
+Ver `CHECKLIST.md` (fonte de verdade do progresso). Em resumo: **Partes 0-5 com código
+pronto e testado** (`test_agent.py`: 6/6). Falta: smoke test ao vivo (Parte 4b, precisa do
+LM Studio), exemplos de conversa (Parte 6), README (Parte 7), fechamento (Parte 8).
 
 ## 6. Armadilhas dos dados (descobertas na exploração)
 

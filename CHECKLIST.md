@@ -46,10 +46,11 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 - [ ] `python agent.py` e testar: "violões até R$1000?" · "quanto custa o Takamine GD20?" · "endereço/horário?" · "me arrependi do pedido 8" (→ identificação → política) · "vendem cordas?" · "capital da França?"
 - [ ] afinar prompt/tools conforme o comportamento do modelo
 
-## Parte 5 — Streamlit
-- [ ] `app.py`: chat, `thread_id` em `session_state`, botão "nova conversa", aviso se LM Studio offline
-- [ ] validar multi-turno + persistência (fechar/reabrir mesmo `thread_id`)
-- [ ] commit `ui streamlit`
+## Parte 5 — Streamlit ✅ (código) · ⏳ validação ao vivo
+- [x] `app.py`: `st.chat_input`, `thread_id` editável na sidebar, "Nova conversa", aviso se LM Studio offline, retomada de histórico via checkpointer (`get_state`)
+- [x] boot headless OK (HTTP 200, sem tracebacks)
+- [ ] validar multi-turno + persistência ao vivo (reabrir mesmo `thread_id`) — junto com a Parte 4b
+- [x] commit `ui streamlit`
 
 ## Parte 6 — Exemplos de interação
 - [ ] 3-5 conversas em `examples/*.md`: catálogo c/ filtro de preço · preço pontual · info da loja · **devolução aplicando política + dados do pedido (não trivial)** · fora de escopo/acessório
