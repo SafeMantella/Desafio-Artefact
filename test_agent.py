@@ -72,6 +72,18 @@ def test_buscar_produtos():
     assert "EXISTE no catálogo" in r4 and "SEM ESTOQUE" in r4
     assert "Não encontrei" in buscar_produtos.invoke({"termo": "Xurupita"})
 
+    # a faixa de preço vale sobre o preço EFETIVO: o Ohana CK-20 (tabela 549, -20% = 439,20)
+    # tem que caber em "até R$ 500"
+    r5 = buscar_produtos.invoke({"categoria": "ukulele", "preco_max": 500})
+    assert "Ohana CK-20" in r5 and "439,20" in r5
+
+    # categoria que o manual cita mas está sem produtos (6/7/8): dizer isso, não listar outra
+    r6 = buscar_produtos.invoke({"categoria": "saxofone"})
+    assert "Sopro" in r6 and "Ukulele" not in r6 and "Violão" not in r6
+
+    # categoria desconhecida: recusar em vez de descartar o filtro em silêncio (dava 20 ukuleles)
+    assert "Não conheço a categoria" in buscar_produtos.invoke({"categoria": "fender"})
+
 
 def test_detalhe_produto():
     r = detalhe_produto.invoke({"nome_ou_id": "Takamine GD20"})

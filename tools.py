@@ -143,7 +143,22 @@ _CATEGORIAS = {
     "teclado": "Teclados e Pianos", "teclados": "Teclados e Pianos",
     "piano": "Teclados e Pianos", "sintetizador": "Teclados e Pianos",
     "ukulele": "Ukuleles", "ukuleles": "Ukuleles", "uke": "Ukuleles",
+    # Categorias 6, 7 e 8 existem em categories.csv mas hoje estão sem produtos. Mapear
+    # mesmo assim: melhor a tool dizer "sem itens no catálogo" do que ignorar o filtro.
+    # (chave mais específica primeiro — o casamento pelo `termo` é por substring)
+    "saxofone": "Instrumentos de Sopro (Madeiras)", "sax": "Instrumentos de Sopro (Madeiras)",
+    "flauta": "Instrumentos de Sopro (Madeiras)", "clarinete": "Instrumentos de Sopro (Madeiras)",
+    "sopros": "Instrumentos de Sopro (Madeiras)", "sopro": "Instrumentos de Sopro (Madeiras)",
+    "madeiras": "Instrumentos de Sopro (Madeiras)",
+    "trompete": "Instrumentos de Sopro (Metais)", "trombone": "Instrumentos de Sopro (Metais)",
+    "trompa": "Instrumentos de Sopro (Metais)", "tuba": "Instrumentos de Sopro (Metais)",
+    "metais": "Instrumentos de Sopro (Metais)",
+    "violoncelo": "Cordas Orquestrais", "violino": "Cordas Orquestrais",
+    "cordas orquestrais": "Cordas Orquestrais", "orquestral": "Cordas Orquestrais",
+    "cello": "Cordas Orquestrais",
 }
+
+CATEGORIAS_CONHECIDAS = ", ".join(sorted(set(_CATEGORIAS.values())))
 
 _STATUS_PRODUTO = {"active": "à venda", "discontinued": "descontinuado", "coming_soon": "em breve no catálogo"}
 
@@ -170,14 +185,23 @@ def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float = 0,
 
     termo: texto livre para casar no nome (ex.: "Yamaha", "dreadnought", "nylon").
     categoria: tipo de instrumento (violão, guitarra, baixo, bateria, teclado, ukulele).
-    preco_min / preco_max: faixa de preço em reais (preço de tabela). Use 0 (padrão) para
-        "sem limite" — NUNCA passe None, null ou texto.
+    preco_min / preco_max: faixa de preço em reais, sobre o preço EFETIVO (o promocional
+        quando há promoção ativa, senão o de tabela). Use 0 (padrão) para "sem limite" —
+        NUNCA passe None, null ou texto.
     apenas_disponiveis: se True (padrão), só lista o que está em estoque e à venda.
 
     Retorna uma lista com preço de tabela, preço promocional (se houver promoção ativa) e
     preço à vista no PIX. Não invente itens: use só o que esta ferramenta retornar.
     """
     cat_alvo = _CATEGORIAS.get(_norm(categoria)) if categoria else None
+    if categoria and not cat_alvo:
+        # Antes o filtro era descartado em silêncio: categoria="saxofone" devolvia 20 ukuleles.
+        return (f"Não conheço a categoria '{categoria}'. As categorias do catálogo são: "
+                f"{CATEGORIAS_CONHECIDAS}. Para texto livre (marca, modelo), use o `termo`.")
+
+    # A faixa de preço vale sobre o preço EFETIVO (o promocional quando há promoção ativa):
+    # "até R$ 500" tem que trazer o Ohana CK-20, que sai por R$ 439,20 com a tabela em 549.
+    efetivo = "COALESCE(preco_promocional, preco_tabela)"
 
     def _consulta(so_disponiveis: bool) -> list[sqlite3.Row]:
         sql = "SELECT * FROM v_produto WHERE 1=1"
@@ -185,14 +209,14 @@ def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float = 0,
         if so_disponiveis:
             sql += " AND disponivel = 1"
         if preco_min and preco_min > 0:
-            sql += " AND preco_tabela >= ?"; args.append(preco_min)
+            sql += f" AND {efetivo} >= ?"; args.append(preco_min)
         if preco_max and preco_max > 0:
-            sql += " AND preco_tabela <= ?"; args.append(preco_max)
+            sql += f" AND {efetivo} <= ?"; args.append(preco_max)
         if cat_alvo:
             sql += " AND categoria = ?"; args.append(cat_alvo)
 
         with closing(_conn()) as c:
-            rows = c.execute(sql + " ORDER BY preco_tabela", args).fetchall()
+            rows = c.execute(f"{sql} ORDER BY {efetivo}", args).fetchall()
 
         # termo: casa cada palavra (sem acento) no nome; se não veio categoria explícita,
         # também tenta interpretar o termo como categoria.
@@ -220,6 +244,13 @@ def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float = 0,
                     "está no catálogo — e ofereça alternativas (busque de novo, sem o termo).")
 
     if not rows:
+        if cat_alvo:
+            with closing(_conn()) as c:
+                na_categoria = c.execute("SELECT COUNT(*) FROM v_produto WHERE categoria = ?",
+                                         [cat_alvo]).fetchone()[0]
+            if na_categoria == 0:
+                return (f"A loja trabalha com {cat_alvo} (o manual cita a categoria), mas não há "
+                        "nenhum item dessa categoria no catálogo no momento.")
         return ("Não encontrei nenhum instrumento com esses critérios. "
                 "Talvez ajustando a faixa de preço ou a categoria.")
 
