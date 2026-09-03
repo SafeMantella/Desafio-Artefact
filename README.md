@@ -71,17 +71,20 @@ Variáveis de ambiente (`.env`):
 
 ```bash
 python test_agent.py    # 7 checks determinísticos, sem LLM — rápido
-python test_live.py     # 13 casos ponta a ponta contra o LM Studio — lento (~15 min)
+python test_live.py     # 16 casos ponta a ponta contra o LM Studio — lento (~25 min)
+python test_live.py identidade   # só os casos cujo nome contém "identidade"
 ```
 
 - **`test_agent.py`** cobre a lógica não-trivial sem chamar o modelo: views do ETL (preço
   promocional, PIX não-cumulativo, disponibilidade), roteamento do `consultar_politica`, as
   três tools de dados (incl. os ataques à verificação de identidade) e a montagem do grafo.
-- **`test_live.py`** é a avaliação do agente: cada caso declara as mensagens do cliente, a
-  ferramenta que devia ser chamada e o que a resposta final deve / não deve conter (preço
+- **`test_live.py`** é a avaliação do agente: cada caso declara as mensagens do cliente, a(s)
+  ferramenta(s) que deviam ser chamadas e o que a resposta final deve / não deve conter (preço
   certo, sem promoção inventada, sem PII vazada em recusa de identidade, sem política
-  inventada, recusa de fora-de-escopo, etc.). Depende do LLM, então um caso pode oscilar entre
-  execuções — é o custo de avaliar um modelo local não determinístico.
+  inventada, persona, recusa de fora-de-escopo, etc.). Depende do LLM, então um caso pode
+  oscilar entre execuções — é o custo de avaliar um modelo local não determinístico. Casos
+  com oscilação conhecida são marcados `flaky=True`: aparecem no relatório, mas não derrubam
+  o resultado.
 
 ---
 
@@ -175,7 +178,7 @@ decoradas com `@tool` (`langchain-core`).
   modelos frontier. Mitigações: só 4 ferramentas, descrições ricas, `temperature=0.3`, e um
   system prompt curto e imperativo. O código é agnóstico ao modelo (`base_url` + `MODEL` no
   `.env`), então trocar por uma API é mudar duas variáveis.
-- **Recomendação:** Qwen3.5-9B (`qwen/qwen3.5-9b`) — passou o `test_live.py` (13/13 na última
+- **Recomendação:** Qwen3.5-9B (`qwen/qwen3.5-9b`) — passou o `test_live.py` (16/16 na última
   rodada). A família Qwen2.5-Instruct 7B+ é uma alternativa mais leve. Modelos frontier via API
   resolveriam a latência e a confiabilidade do *tool calling*, ao custo de mandar PII pra fora.
 - **A tensão que esta escolha assume:** o problema de negócio do enunciado é *volume* — "a
@@ -335,10 +338,30 @@ Dois níveis, ambos com `assert` e um `main()` próprio, sem pytest:
 - **`test_agent.py`** (7 funções, sem LLM): a lógica determinística — views do ETL, roteamento
   de política, as tools de dados, e os ataques à verificação de identidade (repetição, spray,
   sobrenome, *bound* de colisão cruzada). Rápido, roda em qualquer lugar.
-- **`test_live.py`** (13 casos, contra o LM Studio): a avaliação do agente ponta a ponta —
-  cada caso declara os turnos do cliente, a ferramenta esperada e o que a resposta deve / não
-  deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é
-  o que trava regressão de comportamento quando o prompt muda.
+- **`test_live.py`** (16 casos, contra o LM Studio): a avaliação do agente ponta a ponta —
+  cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta
+  deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo
+  local), mas é o que trava regressão de comportamento quando o prompt muda.
+
+Três detalhes de desenho do eval, todos por causa de furo encontrado ao revisar as asserções:
+
+- **Oráculo de PII derivado, não escrito à mão.** O caso de recusa de identidade não lista as
+  strings proibidas: ele chama `status_pedido` com a identidade *correta*, extrai todo campo
+  sensível do retorno (nome, data, itens, valor, forma de pagamento, previsão, rastreio) e
+  exige que nenhum apareça na resposta dada à identidade errada. Uma lista à mão cobria 3 dos
+  8 campos e desatualizava junto com os dados.
+- ***Whitelist* em vez de *blacklist*** onde a alucinação é aberta. Não dá para enumerar toda
+  frase inventável sobre uma marca inexistente; dá para exigir a recusa que o prompt pede
+  (`"a|b|c"` num `contem` significa "qualquer uma serve").
+- **Asserção que passa nos dois sentidos não vale.** `contem=["estoque"]` passava tanto em
+  "em estoque" quanto em "sem estoque" — e "sem estoque" *contém* "em estoque" como
+  substring, então nem a negação salvava.
+
+O eval também pagou por si: o caso de produto sem estoque só passava em 1 de 3 rodadas, e a
+causa era um bug real — `buscar_produtos` com o filtro de disponibilidade devolvia "não
+encontrei nada" para um produto que **existe e está sem estoque**, indistinguível de um
+produto inexistente, e o agente repassava ao cliente "não está no catálogo". A tool agora
+separa os dois casos; o caso passou a 3/3.
 
 pytest seria uma dependência a mais sem ganho nessa escala.
 
@@ -348,7 +371,9 @@ pytest seria uma dependência a mais sem ganho nessa escala.
 
 - **Confiabilidade do *tool calling* depende do modelo local.** Um modelo fraco pode responder
   preço/estoque sem chamar a ferramenta, ou vazar uma resposta fora de escopo. Com Qwen3.5-9B a
-  última rodada do `test_live.py` deu 13/13, mas não é garantido a 100% — daí o eval existir.
+  última rodada do `test_live.py` deu 16/16, mas não é garantido a 100% — daí o eval existir.
+  Rodando um caso isolado várias vezes dá para ver a oscilação: qual ferramenta o agente
+  escolhe e como ele frasea variam entre execuções, com o mesmo input.
 - **Latência vs. o problema de volume.** Cada turno leva ~10 s a ~2 min (modelo local, sem
   *streaming*). Aceitável para demonstrar o agente, mas não ataca a sobrecarga da equipe que
   motivou o projeto — ver a "tensão que esta escolha assume" na decisão 2.
@@ -367,7 +392,7 @@ pytest seria uma dependência a mais sem ganho nessa escala.
 
 ## Com mais tempo
 
-- **Expandir a avaliação** (`test_live.py` já existe com 13 casos): mais cenários, um
+- **Expandir a avaliação** (`test_live.py` já existe com 16 casos): mais cenários, um
   LLM-as-judge para os julgamentos mais sutis (tom, completude), e rodar em CI com um modelo
   servido pequeno em vez de depender do LM Studio local.
 - **Guard de saída** determinístico para grounding de política: se a resposta final citar um
@@ -424,7 +449,7 @@ agent.py             create_react_agent + checkpointer SQLite; REPL em __main__
 app.py               interface Streamlit
 run_examples.py      gera examples/*.md rodando o agente nos 5 cenários
 test_agent.py        7 checks assert-based, sem LLM
-test_live.py         13 casos de avaliação ponta a ponta contra o LM Studio
+test_live.py         16 casos de avaliação ponta a ponta contra o LM Studio
 CLAUDE.md            visão geral para retomar o projeto depois
 CHECKLIST.md         progresso por partes
 data/                dados fornecidos (não alterados)

@@ -91,5 +91,15 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
   Studio (ferramenta esperada + contém/não-contém na resposta). Cobre catálogo, preço, PIX
   multi-turno, promoção falsa, políticas, devolução não-trivial, recusa de identidade sem
   vazar PII, fora de escopo, não inventar marca, produto sem estoque. Última rodada: 13/13.
+- [x] **#2b eval endurecido** (revisão do ANALISTA sobre o próprio `test_live.py`): 13 → 16
+  casos. Oráculo de PII **derivado** do retorno da tool com a identidade correta (3 → 8 campos
+  cobertos) + exigência de recusa explícita; `"a|b"` em `contem` = qualquer uma serve
+  (whitelist onde blacklist de frase era furada: marca inventada, produto sem estoque);
+  `tool_esperada` aceita lista. Casos novos: persona (`melodIA`), duas tools no mesmo turno,
+  isca de atraso→reembolso (marcada `flaky=True`, não derruba o gate).
+- [x] **bug achado pelo eval**: `buscar_produtos` com `apenas_disponiveis=True` devolvia
+  "não encontrei nada" para produto que existe mas está sem estoque → agente dizia ao cliente
+  "não está no catálogo" (falso). Agora refaz a busca sem o filtro e diferencia os dois casos.
+  Assert em `test_agent.py`; o caso do eval foi de 1/3 para 3/3 rodadas.
 - [x] **#3** (`e4b5593`): meio-termo de embeddings documentado na decisão 3 do README.
 - [x] **#5** (`6cfc5f7`): tensão modelo-local × volume nomeada na decisão 2 do README.

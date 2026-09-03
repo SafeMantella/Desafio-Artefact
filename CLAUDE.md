@@ -77,8 +77,10 @@ data/              dados fornecidos — NÃO alterar
 
 **Completo + rodada de correções pós-análise do @ANALISTA.** Ver `CHECKLIST.md` (Parte 9).
 Partes 0-8: ETL, políticas, 4 tools, agente (melodIA), Streamlit, 5 exemplos, README, clone
-limpo. `test_agent.py`: 7/7. `test_live.py`: 13/13 (última execução). Correções: #4 identidade
-(v3 + resíduo documentado), #1 grounding (mitigado), #3/#5 (README), #2 (eval harness).
+limpo. `test_agent.py`: 7/7. `test_live.py`: 16/16 (última execução). Correções: #4 identidade
+(v3 + resíduo documentado), #1 grounding (mitigado), #3/#5 (README), #2 (eval harness),
+#2b eval endurecido (16 casos, oráculo de PII derivado, whitelist no lugar de blacklist) —
+que achou e fechou o bug do `buscar_produtos` ("existe sem estoque" virava "não existe").
 
 Pendências opcionais (Pedro): validar o Streamlit ao vivo num clone limpo; decidir se mantém
 o PDF do enunciado no repo.
