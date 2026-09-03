@@ -1,4 +1,8 @@
 .env
+
+# Enunciado do desafio: fica local, não é material nosso para republicar.
+desafio_tecnico_ai_eng_artefact.pdf
+
 emporio.db
 emporio.db-shm
 emporio.db-wal

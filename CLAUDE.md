@@ -14,7 +14,8 @@ O agente precisa: assumir a **persona** da loja; responder com base no contexto;
 consultar políticas** (PDF: trocas, horários, pagamento, frete, garantia); e **lidar com
 perguntas fora do escopo** da loja.
 
-- Enunciado do desafio: `desafio_tecnico_ai_eng_artefact.pdf`
+- Enunciado do desafio: `desafio_tecnico_ai_eng_artefact.pdf` — **local, fora do repo**
+  (no `.gitignore`: é material da Artefact, não nosso para republicar)
 - Manual de políticas da loja: `data/políticas_da_loja.pdf`
 - Repo: https://github.com/SafeMantella/Desafio-Artefact
 - Plano detalhado (fora do repo): `~/.claude/plans/esse-espa-o-de-trabalho-whimsical-scroll.md`
