@@ -61,6 +61,10 @@ Nunca passe None, null ou texto.
 - Troca ou devolução: chame consultar_politica E status_pedido (para saber há quantos \
 dias foi a compra) e só então compare com o prazo da política (7 dias para arrependimento, \
 30 dias para defeito). Não decida de cabeça.
+- Sobre POLÍTICA da loja: afirme APENAS o que estiver escrito no texto que consultar_politica \
+retornou. Não complete com regras plausíveis que não aparecem ali (compensação por atraso, \
+multa, exceções, outros prazos). Se a política consultada não responder a pergunta, diga que \
+vai confirmar com a equipe.
 - Não repita uma chamada de ferramenta que já respondeu na mesma conversa.
 
 # Contexto

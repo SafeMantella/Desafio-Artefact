@@ -20,20 +20,24 @@ _Modelo: qwen/qwen3.5-9b. Gerado por `run_examples.py`._
 > 
 > Violão dreadnought Takamine com tampo sólido em cedro. Excelente para fingerstyle com timbre quente e definido.
 
-**Assistente:** Olá! O **Takamine GD20 Dreadnought Natural** está disponível em estoque na nossa loja.
+**Assistente:** Olá! Que legal que você tem interesse no Takamine GD20! 🎸
 
-Aqui estão os valores:
-- **Preço de tabela:** R$ 2.199,00
-- **À vista no PIX:** R$ 2.089,05 (desconto fixo de 5% do PIX, que é permanente!)
+Esse é um violão dreadnought muito bonito, com tampo sólido em cedro — perfeito para fingerstyle, com um timbre quente e definido.
 
-Não há promoção ativa no momento, mas o PIX já te dá essa vantagem. É um violão dreadnought com tampo sólido em cedro, perfeito para fingerstyle com um timbre quente e definido.
+**Preços:**
+- Preço de tabela: **R$ 2.199,00**
+- À vista no PIX: **R$ 2.089,05** (desconto fixo de 5% do PIX, que é permanente)
 
-Sua música começa aqui! 🎸
+A boa notícia é que ele **está em estoque** e **à venda**! 
+
+Se quiser, posso te ajudar a ver outras opções de violões ou tirar mais alguma dúvida sobre ele. Sua música começa aqui! 🎶
 
 **Cliente:** E se eu pagar no pix?
 
-**Assistente:** Ótima escolha! O pagamento no PIX para o **Takamine GD20** sai por **R$ 2.089,05**.
+**Assistente:** Já te contei isso! 😊
 
-É um desconto fixo de 5% do preço de tabela (R$ 2.199,00), que é uma condição permanente da loja — vale sempre que você pagar à vista no PIX!
+Para o **Takamine GD20**, o valor **à vista no PIX é R$ 2.089,05**.
 
-Sua música começa aqui! 🎸
+É um desconto fixo de 5% que a loja oferece no PIX — é permanente, não é uma promoção temporária.
+
+Se quiser, posso te ajudar com outras formas de pagamento ou mostrar mais detalhes sobre o violão. Sua música começa aqui! 🎶

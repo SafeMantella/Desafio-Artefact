@@ -6,9 +6,9 @@ _Modelo: qwen/qwen3.5-9b. Gerado por `run_examples.py`._
 
 **Cliente:** Me arrependi de uma compra que fiz, o pedido 8. Consigo devolver?
 
-**Assistente:** Olá! Entendo sua situação. Para verificar se há direito à devolução do seu pedido 8, preciso confirmar a identidade do cliente para proteger seus dados.
+**Assistente:** Olá! Para verificar se o seu pedido 8 está dentro do prazo para devolução, preciso confirmar sua identidade primeiro (por segurança e LGPD).
 
-Você poderia me informar o **nome completo** ou o **e-mail** que usou ao fazer esse pedido? Assim consigo consultar o status e te explicar sobre as regras de devolução.
+Poderia me passar o **e-mail** ou o **nome completo** (nome e sobrenome) que estava no pedido? Assim consigo consultar o status e te dar a resposta correta!
 
 **Cliente:** É a Ana Carolina Ferreira
 
@@ -24,7 +24,7 @@ Você poderia me informar o **nome completo** ou o **e-mail** que usou ao fazer 
 > Previsão de entrega: 28/02/2026
 > Código de rastreio: BRJL5544332BR
 
-> 🔧 chama `consultar_politica(topico='trocas e devoluções')`
+> 🔧 chama `consultar_politica(topico='trocas devoluções arrependimento')`
 
 > 🔧 `consultar_politica` →
 >
@@ -50,14 +50,26 @@ Você poderia me informar o **nome completo** ou o **e-mail** que usou ao fazer 
 
 **Assistente:** Olá, Ana Carolina! Tudo bem?
 
-Acompanhei o status do seu pedido 8 (Kala KA-C Concert Mogno) e ele está atualmente **"enviado, a caminho"**, com previsão de entrega para 28/02/2026.
+Verifiquei o status do seu pedido 8 e encontrei algumas informações importantes:
 
-Sobre a devolução: **ainda não é possível** solicitar o reembolso agora. O direito de arrependimento (7 dias) só começa a contar **após o recebimento** do produto. Como a entrega ainda não foi confirmada, o prazo não começou.
+- **Status atual:** O pedido está "enviado, a caminho" (em trânsito).
+- **Data do pedido:** 15/02/2026.
+- **Produto:** 1x Kala KA-C Concert Mogno.
+- **Preço:** R$ 349,90.
 
-**O que fazer:**
-1. Aguarde a confirmação de entrega (o status deve mudar para "entregue").
-2. Assim que receber, você tem **7 dias corridos** para solicitar a devolução, desde que o produto esteja na embalagem original, sem uso e com todos os acessórios.
+Sobre a devolução: **ainda não é possível** fazer o pedido de volta agora, porque o produto **ainda não foi entregue**.
 
-Se o produto chegar com defeito, o prazo seria de 30 dias para troca. Mas como ainda não foi recebido, o ideal é aguardar a confirmação de entrega primeiro.
+De acordo com nossa política de trocas e devoluções:
+- Para **arrependimento** (mudança de ideia): você tem **7 dias corridos a partir do RECEBIMENTO** do produto.
+- Para **defeito**: você tem **30 dias corridos a partir da compra**.
 
-Posso te ajudar com mais alguma coisa sobre o pedido ou sobre o produto? Sua música começa aqui! 🎸
+Como o pedido ainda está em trânsito (a previsão de entrega era 28/02/2026), você só poderá exercer esse direito após receber o violão.
+
+**O que fazer agora:**
+1. Acompanhe o rastreio (código: BRJL5544332BR) para saber quando chegar.
+2. Assim que receber, verifique se o produto está em perfeito estado.
+3. Se tiver algum problema, entre em contato conosco **imediatamente** para iniciarmos o processo de troca/devolução.
+
+Se o produto chegar e estiver tudo certo, você pode ficar tranquila com a compra! 😊
+
+Precisa de mais alguma ajuda com o pedido ou com algum instrumento? Sua música começa aqui! 🎸

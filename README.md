@@ -277,6 +277,14 @@ preço/estoque/prazo sem ferramenta (seção 7.1 — "informações precisas"), 
 original + % + final nas promoções, oferecer alternativas para itens sem estoque, apresentar
 listas item a item, não corrigir dados que o cliente informa, não inventar marcas, e recusar
 assuntos fora do escopo (com exemplo concreto de recusa para ancorar um modelo pequeno).
+
+**Grounding de política:** o prompt manda o agente afirmar *apenas* o que aparece no texto
+que `consultar_politica` retornou, e dizer "vou confirmar com a equipe" quando a política não
+cobre a pergunta. Isso surgiu de uma falha real — o modelo tinha inventado "compensação por
+atraso na entrega", que não existe no manual. Guardrail de prompt não é garantia (modelo
+local, `temperature=0.3`); a validação repetível é o eval automatizado do agente, listado em
+"Com mais tempo".
+
 Várias dessas regras foram acrescentadas **depois de observar falhas em conversas reais** —
 ver os commits `fix: ...` e `prompt: ...`.
 

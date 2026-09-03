@@ -33,21 +33,17 @@ _Modelo: qwen/qwen3.5-9b. Gerado por `run_examples.py`._
 > | CNPJ | 12.345.678/0001-90 |
 > | Endereço […]
 
-**Assistente:** Olá! 😊
+**Assistente:** Oi! Tudo bem? Aqui é a **melodIA**, da Empório da Música! 😊
 
 Aqui estão as informações que você pediu:
 
-**Endereço:**  
+📍 **Endereço:**  
 Rua 14 de Maio, 3200 — Centro, Campo Grande - MS, 79202-333
 
-**Horário de funcionamento no sábado:**  
+🕐 **Horário de funcionamento no sábado:**  
 Das 09:00 às 13:00
 
-A gente atende de segunda a sexta das 09h às 18h, e no sábado até às 13h. Domingo e feriados fechados, mas em datas especiais como Black Friday ou o aniversário da loja, o horário pode ser estendido!
-
-Sua música começa aqui. 🎸
-
-Tem mais alguma dúvida ou quer ver algum instrumento?
+Se precisar de mais alguma coisa, é só chamar! Sua música começa aqui. 🎸
 
 **Cliente:** Vocês parcelam no cartão?
 
@@ -72,18 +68,17 @@ Tem mais alguma dúvida ou quer ver algum instrumento?
 > - 7x a 12x: sem juros, parcela mínima de R$ 100,00.
 > - Combinação de formas de pagamento (ex.: PIX + cartão): permitida para compras acima de R$ 2.000,00.
 
-**Assistente:** Sim, com certeza! 😊
+**Assistente:** Sim, parcelamos no cartão! Aqui estão as condições:
 
-**Parcelamento no cartão de crédito:**
-- Até **3x sem juros** (sem valor mínimo, exceto para compras abaixo de R$ 50,00)
-- **4x a 6x sem juros** (valor mínimo de R$ 80,00)
-- **7x a 12x sem juros** (valor mínimo de R$ 100,00)
+💳 **Cartão de Crédito:**
+- Até **12x sem juros**
+- Parcela mínima de **R$ 100,00** (para 7x a 12x)
+- De **4x a 6x**: sem juros, valor mínimo de **R$ 80,00**
+- Até **3x**: sem juros, sem valor mínimo (exceto para valores abaixo de R$ 50,00)
 
-E também aceitamos:
-- **PIX** com 5% de desconto à vista
-- **Cartão de Débito** à vista (todas as bandeiras)
-- **Boleto Bancário** à vista (compensação em até 3 dias úteis)
+💳 **Cartão de Débito:**
+- Pagamento à vista (todas as bandeiras aceitas)
 
-Sua música começa aqui. 🎸
+E tem uma vantagem extra: **PIX com 5% de desconto** permanente!
 
-Quer ver algum instrumento ou tem alguma dúvida sobre preços?
+Precisa de ajuda para escolher o instrumento ou quer saber mais sobre algum modelo específico? Sua música começa aqui! 🎸
