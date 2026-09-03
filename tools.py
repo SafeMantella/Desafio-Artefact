@@ -14,7 +14,7 @@ from datetime import date
 
 from langchain_core.tools import tool
 
-from config import DATA_REFERENCE_DATE, DB_PATH, POLICIES_PATH
+from config import DATA_REFERENCE_DATE, DB_PATH, POLICIES_PATH, log
 
 
 def _norm(s: str) -> str:
@@ -106,6 +106,7 @@ def consultar_politica(topico: str) -> str:
     topico: o assunto em linguagem natural (ex.: "política de troca", "horário", "formas de
     pagamento", "vocês vendem cordas?").
     """
+    log.debug("consultar_politica(topico=%r)", topico)
     q = _norm(topico)
     pontos: dict[str, int] = {}
     for palavra, sec in _KEYWORDS.items():
@@ -193,6 +194,8 @@ def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float = 0,
     Retorna uma lista com preço de tabela, preço promocional (se houver promoção ativa) e
     preço à vista no PIX. Não invente itens: use só o que esta ferramenta retornar.
     """
+    log.debug("buscar_produtos(termo=%r, categoria=%r, preco=%s-%s, disponiveis=%s)",
+             termo, categoria, preco_min, preco_max, apenas_disponiveis)
     cat_alvo = _CATEGORIAS.get(_norm(categoria)) if categoria else None
     if categoria and not cat_alvo:
         # Antes o filtro era descartado em silêncio: categoria="saxofone" devolvia 20 ukuleles.
@@ -272,6 +275,7 @@ def detalhe_produto(nome_ou_id: str) -> str:
     nome_ou_id: o nome (ou parte dele) ou o id numérico do produto. Se houver ambiguidade,
     a ferramenta devolve a lista de candidatos para você pedir mais detalhes ao cliente.
     """
+    log.debug("detalhe_produto(nome_ou_id=%r)", nome_ou_id)
     with closing(_conn()) as c:
         if nome_ou_id.strip().isdigit():
             rows = c.execute("SELECT * FROM v_produto WHERE product_id = ?",
@@ -372,6 +376,7 @@ def status_pedido(order_id: int, identificador: str) -> str:
     recebimento — prazos que a política conta a partir do recebimento exigem perguntar ao
     cliente quando ele recebeu.
     """
+    log.debug("status_pedido(order_id=%s)", order_id)   # identificador tem PII: não logar
     with closing(_conn()) as c:
         o = c.execute("SELECT * FROM orders WHERE order_id = ?", [order_id]).fetchone()
         if not o:

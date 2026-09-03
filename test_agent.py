@@ -159,6 +159,29 @@ def test_identidade_nao_burlavel():
     assert cruzadas <= 3, f"colisões cruzadas subiram para {cruzadas} — regressão de agregação"
 
 
+def test_poda_historico():
+    """Conversa longa não pode estourar a janela nem deixar ToolMessage órfã (a API recusa)."""
+    from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
+
+    from agent import _podar
+
+    msgs = []
+    for i in range(60):
+        msgs.append(HumanMessage(f"pergunta {i} " + "blablabla " * 40))
+        msgs.append(AIMessage("", tool_calls=[
+            {"name": "buscar_produtos", "args": {"termo": "violao"}, "id": f"call{i}"}]))
+        msgs.append(ToolMessage("resultado " * 200, tool_call_id=f"call{i}"))
+        msgs.append(AIMessage("resposta ao cliente " * 40))
+
+    podadas = _podar({"messages": msgs})["llm_input_messages"]
+    assert 0 < len(podadas) < len(msgs), f"não podou: {len(podadas)} de {len(msgs)}"
+    assert isinstance(podadas[0], HumanMessage), f"começa em {type(podadas[0]).__name__}"
+
+    pedidas = {tc["id"] for m in podadas if isinstance(m, AIMessage) for tc in (m.tool_calls or [])}
+    respondidas = {m.tool_call_id for m in podadas if isinstance(m, ToolMessage)}
+    assert respondidas <= pedidas, f"ToolMessage órfã: {respondidas - pedidas}"
+
+
 def test_agente_compila():
     """O grafo monta, as 4 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
     from agent import build_agent
@@ -170,7 +193,7 @@ def test_agente_compila():
 
 TESTS = [test_etl_views, test_consultar_politica, test_buscar_produtos,
          test_detalhe_produto, test_status_pedido, test_identidade_nao_burlavel,
-         test_agente_compila]
+         test_poda_historico, test_agente_compila]
 
 
 def main():
