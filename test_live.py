@@ -143,6 +143,8 @@ def _pii_do_pedido(order_id: int, identidade: str) -> list[str]:
     texto = re.sub(r"\(.*?\)", "", texto)       # fora o "(há N dias; hoje = ...)"
     valores = []
     for pedaco in re.split(r"\n|·|;", texto):   # ";" separa os itens do pedido
+        if pedaco.strip().startswith("Obs."):    # orientação para o agente, não dado do cliente
+            continue
         v = pedaco.split(":", 1)[1] if ":" in pedaco else pedaco.split("—", 1)[-1]
         v = re.sub(r"^\d+x\s*", "", v.strip())  # "1x Kala KA-C" -> pega o nome sozinho também
         if len(v) > 3:

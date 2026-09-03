@@ -107,6 +107,10 @@ def test_status_pedido():
     ok_email = status_pedido.invoke({"order_id": 5, "identificador": "rafael.pereira@jmail.com"})
     assert "Pedido 5" in ok_email
 
+    # policies.md §4.1 conta os 7 dias do RECEBIMENTO, não da compra, e o dataset não tem
+    # essa data. A tool precisa dizer isso — senão o agente compara com o relógio errado.
+    assert "dias da compra" in ok and "não registra a data de recebimento" in ok.lower()
+
     nao = status_pedido.invoke({"order_id": 5, "identificador": "Fulano de Tal"})
     assert "não posso liberar" in nao
 

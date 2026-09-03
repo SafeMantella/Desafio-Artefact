@@ -368,7 +368,9 @@ def status_pedido(order_id: int, identificador: str) -> str:
     ainda não informou, PEÇA antes de chamar esta ferramenta.
 
     Retorna status, itens, valor, forma de pagamento, previsão de entrega, código de
-    rastreio e há quantos dias o pedido foi feito (para aplicar prazos de troca/devolução).
+    rastreio e há quantos dias a COMPRA foi feita. Atenção: o sistema não guarda data de
+    recebimento — prazos que a política conta a partir do recebimento exigem perguntar ao
+    cliente quando ele recebeu.
     """
     with closing(_conn()) as c:
         o = c.execute("SELECT * FROM orders WHERE order_id = ?", [order_id]).fetchone()
@@ -389,7 +391,7 @@ def status_pedido(order_id: int, identificador: str) -> str:
     linhas = [
         f"Pedido {order_id} — {_STATUS_PEDIDO.get(o['status'], o['status'])}",
         f"Cliente: {cli['name']}",
-        f"Data do pedido: {d.strftime('%d/%m/%Y')} (há {dias} dias; hoje = "
+        f"Data do pedido: {d.strftime('%d/%m/%Y')} (há {dias} dias da compra; hoje = "
         f"{DATA_REFERENCE_DATE.strftime('%d/%m/%Y')})",
         "Itens: " + "; ".join(f"{it['quantity']}x {it['produto']}" for it in itens),
         f"Valor total: {_brl(o['total_brl'])}  ·  Pagamento: {_pagamento(o['payment_method'])}",
@@ -402,6 +404,10 @@ def status_pedido(order_id: int, identificador: str) -> str:
         linhas.append(f"Código de rastreio: {o['tracking_code']}")
     elif o["status"] in ("pending", "confirmed"):
         linhas.append("Ainda sem código de rastreio (só é gerado no despacho).")
+    linhas.append(
+        "Obs.: o sistema NÃO registra a data de recebimento, só a da compra. Se o prazo da "
+        "política contar a partir do recebimento, pergunte ao cliente quando ele recebeu "
+        "antes de dizer se está dentro ou fora do prazo.")
     return "\n".join(linhas)
 
 
