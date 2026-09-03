@@ -173,6 +173,14 @@ decoradas com `@tool` (`langchain-core`).
   cenários). A família Qwen2.5-Instruct 7B+ é uma alternativa mais leve. Modelos frontier via
   API resolveriam a latência e a confiabilidade do *tool calling*, ao custo de mandar PII pra
   fora.
+- **A tensão que esta escolha assume:** o problema de negócio do enunciado é *volume* — "a
+  equipe está sobrecarregada com perguntas recorrentes". Um modelo local a 10 s–2 min por
+  turno, sem *streaming* nem fila, **demonstra** que a lógica do agente funciona, mas não
+  ataca o volume: um atendente esperando 2 minutos por resposta não está menos sobrecarregado.
+  Este protótipo otimiza para custo, privacidade e reprodutibilidade offline; um deployment
+  real contra o volume seria outra decisão — modelo servido com *batching* (ou API), resposta
+  em *streaming*, e uma fila de atendimento. O agente aqui é a peça que se prova primeiro; a
+  camada de serving é o passo seguinte, não um detalhe.
 
 ### 3. Políticas — conversão com `pymupdf4llm` + ferramenta de seção (sem embeddings)
 
@@ -315,9 +323,9 @@ grafo) sem chamar o LLM. Para 6 checks, pytest seria uma dependência a mais sem
 - **Confiabilidade do *tool calling* depende do modelo local.** Um modelo fraco pode responder
   preço/estoque sem chamar a ferramenta, ou vazar uma resposta fora de escopo. Com Qwen3.5-9B o
   comportamento no smoke test foi bom (6/6 cenários), mas não é garantido a 100%.
-- **Latência.** Localmente, cada turno leva de ~10 s a ~2 min, dependendo do modelo, do
-  hardware e de quantas ferramentas o agente encadeia num turno. Aceitável para demonstração,
-  não para produção — uma API resolveria.
+- **Latência vs. o problema de volume.** Cada turno leva ~10 s a ~2 min (modelo local, sem
+  *streaming*). Aceitável para demonstrar o agente, mas não ataca a sobrecarga da equipe que
+  motivou o projeto — ver a "tensão que esta escolha assume" na decisão 2.
 - **Sem guard determinístico de escopo.** A recusa de assuntos fora da loja é só via prompt.
 - **Verificação de identidade não é autenticação.** Exige nome+sobrenome ou e-mail exato
   (ver decisão 6), mas não há login, código de confirmação nem rate limit — e `order_id` é
