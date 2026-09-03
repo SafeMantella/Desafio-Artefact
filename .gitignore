@@ -1,8 +1,12 @@
 .env
 emporio.db
+emporio.db-shm
+emporio.db-wal
 __pycache__/
 *.pyc
 .venv/
 venv/
 .DS_Store
 .streamlit/secrets.toml
+.agents/
+.claude/

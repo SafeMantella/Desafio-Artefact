@@ -49,7 +49,9 @@ python build_db.py                 # gera emporio.db
 # 3. Configuração
 cp .env.example .env               # ajuste MODEL para o id exato carregado no LM Studio
 
-# 4. LM Studio: carregue o modelo e clique em "Start Server" (porta 1234)
+# 4. LM Studio: carregue o modelo e clique em "Start Server" (porta 1234).
+#    Sugestão de carregamento: GPU offload no máximo + contexto 16k+.
+#    (a temperatura NÃO é configurada aqui — o agent.py envia temperature=0.3 em cada requisição)
 
 # 5. Rode a interface
 streamlit run app.py               # UI de chat  (http://localhost:8501)
@@ -140,7 +142,7 @@ ferramentas até ter a resposta.
   de clientes. Rodar o modelo localmente evita mandar esses dados para uma API de terceiros —
   um argumento real de conformidade, não só de custo.
 - **Trade-off assumido:** *tool calling* de modelos abertos pequenos é menos confiável que o de
-  modelos de fronteira. Mitigações: só 4 ferramentas, descrições ricas, `temperature=0.3`, e um
+  modelos frontier. Mitigações: só 4 ferramentas, descrições ricas, `temperature=0.3`, e um
   system prompt curto e imperativo. O código é agnóstico ao modelo (`base_url` + `MODEL` no
   `.env`), então trocar por uma API é mudar duas variáveis.
 - **Recomendação:** Qwen2.5-7B-Instruct — melhor *tool calling* da faixa e português aceitável.
@@ -156,7 +158,7 @@ relevante(s).
 - **Por que não RAG com vector store:** o manual tem ~4 mil tokens e 10 seções bem
   delimitadas. Chunking + embeddings + FAISS/Chroma seria mais infraestrutura, mais latência e
   mais um ponto de falha para resolver um problema que uma tabela de palavras-chave resolve de
-  forma **determinística** e explicável. RAG semântico só se justificaria com dezenas de
+  forma **determinística** e explicável. RAG semântico só se justificaria com uma quantidade massiva de
   documentos.
 - **Por que não jogar o manual inteiro no system prompt:** gastaria ~4k tokens de contexto em
   todo turno (a janela de um modelo local é menor) e misturaria política irrelevante no
