@@ -16,7 +16,7 @@ POLICIES_PATH = ROOT / "policies.md"
 # só precisa da base_url e de uma api_key qualquer (não vazia).
 OPENAI_BASE_URL = os.getenv("OPENAI_BASE_URL", "http://localhost:1234/v1")
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "lm-studio")
-MODEL = os.getenv("MODEL", "qwen2.5-7b-instruct")
+MODEL = os.getenv("MODEL", "qwen/qwen3.5-9b")
 
 # "Hoje" do agente — ver .env.example. O dataset é um snapshot (pedidos até 2026-03-22).
 DATA_REFERENCE_DATE = date.fromisoformat(os.getenv("DATA_REFERENCE_DATE", "2026-03-25"))

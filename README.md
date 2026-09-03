@@ -1,8 +1,8 @@
 # Empório da Música — Agente de Atendimento
 
-Protótipo de um assistente virtual de atendimento ao cliente para a **Empório da Música**,
-loja (fictícia) de instrumentos musicais em Campo Grande/MS. Desafio técnico para a vaga de
-AI Engineer na Artefact.
+Protótipo da **melodIA**, assistente virtual de atendimento ao cliente da **Empório da
+Música**, loja (fictícia) de instrumentos musicais em Campo Grande/MS. Desafio técnico para
+a vaga de AI Engineer na Artefact.
 
 O agente assume a persona da loja, responde por mensagem de texto e sabe **quando consultar
 dados** (catálogo, pedidos, promoções) e **quando consultar as políticas** (trocas, horários,
@@ -50,8 +50,7 @@ python build_db.py                 # gera emporio.db
 cp .env.example .env               # ajuste MODEL para o id exato carregado no LM Studio
 
 # 4. LM Studio: carregue o modelo e clique em "Start Server" (porta 1234).
-#    Sugestão de carregamento: GPU offload no máximo + contexto 16k+.
-#    (a temperatura NÃO é configurada aqui — o agent.py envia temperature=0.3 em cada requisição)
+#    Sugestão de carregamento: GPU offload no máximo + contexto máximo
 
 # 5. Rode a interface
 streamlit run app.py               # UI de chat  (http://localhost:8501)
@@ -65,7 +64,7 @@ Variáveis de ambiente (`.env`):
 |---|---|---|
 | `OPENAI_BASE_URL` | `http://localhost:1234/v1` | endpoint do LM Studio (API compatível com OpenAI) |
 | `OPENAI_API_KEY` | `lm-studio` | qualquer valor não vazio; o LM Studio ignora |
-| `MODEL` | `qwen2.5-7b-instruct` | id do modelo carregado no LM Studio |
+| `MODEL` | `qwen/qwen3.5-9b` | id do modelo carregado no LM Studio |
 | `DATA_REFERENCE_DATE` | `2026-03-25` | "hoje" do agente — ver decisão 4 abaixo |
 
 ### Testes
@@ -118,22 +117,47 @@ de política devolve a(s) seção(ões) relevante(s) do manual em markdown.
 ## Decisões técnicas e justificativas
 
 > As decisões abaixo eram livres. O critério foi: **a solução mais simples que resolve bem o
-> problema deste dataset** (64 produtos, 20 pedidos, um manual de 8 páginas), deixando o caminho
+> problema deste dataset** (65 produtos, 20 pedidos, um manual de 8 páginas), deixando o caminho
 > de evolução explícito.
+>
+> **O loop:** toda tecnologia ou biblioteca que entra no código entra aqui com a motivação.
+> Quando uma decisão muda — inclusive por causa de um teste real (ver histórico de commits) —
+> esta seção muda junto. A tabela é o índice; as subseções detalham as escolhas de arquitetura.
+
+| Tecnologia | Papel no projeto | Motivação (detalhe) |
+|---|---|---|
+| **Python 3.11+** | linguagem | única exigência obrigatória do desafio |
+| **LangGraph** — `create_react_agent`, `SqliteSaver` | laço do agente ReAct + persistência do histórico | laço de raciocínio, *binding* de ferramentas e checkpoint prontos e testados (§1, §7) |
+| **LangChain** — `langchain-core`, `langchain-openai` | decorator `@tool`, tipos de mensagem, `ChatOpenAI` | `ChatOpenAI` é o adaptador de modelo que o `create_react_agent` espera; com `base_url` aponta direto pro LM Studio (§1) |
+| **LM Studio** | serve o modelo local via API compatível com OpenAI | custo zero, offline, e a PII do cliente não sai da máquina — LGPD (§2) |
+| **Qwen3.5-9B** (trocável) | o modelo de linguagem | melhor *tool calling* da faixa aberta pequena + PT-BR aceitável (§2) |
+| **SQLite** (`sqlite3`, stdlib) | catálogo/pedidos consultáveis + histórico de conversa | modelagem explícita em *views*, *joins* limpos, um arquivo só, zero dependência (§4, §7) |
+| **pandas** | ETL dos CSVs (`read_csv` → `to_sql`) | 2 linhas por CSV e inferência de tipo nas colunas mistas int/decimal; usado só no `build_db.py` (§4) |
+| **pymupdf4llm** (+ `pymupdf`) | PDF de políticas → markdown | conversão reproduzível e versionada; usado só no `convert_policies.py`, em *build-time* (§3) |
+| **Streamlit** | interface de chat | chat web em poucas linhas; `thread_id` editável para demonstrar a persistência (§8) |
+| **python-dotenv** | configuração via `.env` | tira `MODEL` / `base_url` / data de referência do código e do git — estilo 12-factor (§10) |
+| **`assert` + `__main__`** | testes (`test_agent.py`) | 6 checks sem framework, rodam em qualquer lugar, zero dependência de teste (§11) |
+
+O metapacote `langchain` está em `requirements.txt` como guarda-chuva de versões; o código
+importa os componentes (`langchain-core`, `langchain-openai`) e `langgraph` diretamente.
 
 ### 1. Abordagem do agente — ReAct com LangChain + LangGraph
 
-`create_react_agent` do LangGraph: um laço em que o modelo alterna entre raciocinar e chamar
-ferramentas até ter a resposta.
+`create_react_agent` (de `langgraph.prebuilt`): um laço em que o modelo alterna entre
+raciocinar e chamar ferramentas até ter a resposta. O modelo fala com o LM Studio via
+`ChatOpenAI(base_url=...)` — o LM Studio expõe a mesma API da OpenAI, então esse adaptador
+do `langchain-openai` conecta sem código de cola. As ferramentas são funções Python
+decoradas com `@tool` (`langchain-core`).
 
 - **Por que não RAG puro:** os dados mais consultados (preço, estoque, status de pedido) são
   estruturados e mudam — pedem *function calling* sobre um banco, não recuperação de texto.
-- **Por que não um agente de SQL:** deixar um modelo local de 7B escrever SQL é frágil e
+- **Por que não um agente de SQL:** deixar um modelo local de 9B escrever SQL é frágil e
   arriscado. Ferramentas com SQL fixo e parametrizado dão o mesmo poder com muito menos risco.
 - **Por que não uma única função "responder":** a força do exercício é justamente o agente
   *decidir* entre dados e políticas — isso é natural no ReAct com ferramentas bem descritas.
-- **LangChain + LangGraph** porque o laço ReAct, o *binding* de ferramentas e o checkpointer de
-  histórico já vêm prontos e testados; reimplementar isso não agregaria nada aqui.
+- **Por que o `create_react_agent` pronto e não montar o grafo à mão:** o laço ReAct, o
+  *binding* de ferramentas e o checkpointer de histórico já vêm prontos e testados no
+  LangGraph; reimplementar isso não agregaria nada aqui.
 
 ### 2. Modelo e provedor — LM Studio (modelo local)
 
@@ -145,7 +169,10 @@ ferramentas até ter a resposta.
   modelos frontier. Mitigações: só 4 ferramentas, descrições ricas, `temperature=0.3`, e um
   system prompt curto e imperativo. O código é agnóstico ao modelo (`base_url` + `MODEL` no
   `.env`), então trocar por uma API é mudar duas variáveis.
-- **Recomendação:** Qwen2.5-7B-Instruct — melhor *tool calling* da faixa e português aceitável.
+- **Recomendação:** Qwen3.5-9B (`qwen/qwen3.5-9b`) — foi o modelo do *smoke test* (6/6
+  cenários). A família Qwen2.5-Instruct 7B+ é uma alternativa mais leve. Modelos frontier via
+  API resolveriam a latência e a confiabilidade do *tool calling*, ao custo de mandar PII pra
+  fora.
 
 ### 3. Políticas — conversão com `pymupdf4llm` + ferramenta de seção (sem embeddings)
 
@@ -190,10 +217,15 @@ produto claramente sintéticos e às vezes inconsistentes com a descrição (ex.
 1X" com descrição de "Fender Jazz Bass") — a decisão foi **confiar nos campos estruturados**
 (nome, preço, categoria, estoque, status) e tratar a descrição como texto livre.
 
-**Por que SQLite e não pandas na memória:** o SQLite deixa a modelagem explícita (tabelas +
-views documentam as regras), dá joins e agregações limpos, e é o mesmo arquivo que o
-checkpointer de conversa usa. O LLM nunca gera SQL — as tools usam consultas fixas com
-parâmetros.
+**Por que pandas no ETL:** `pd.read_csv(...).to_sql(...)` resolve o carregamento em duas
+linhas por arquivo e já infere os tipos das colunas com int e decimal misturados. É a única
+dependência que o `build_db.py` usa; `csv` da stdlib + `INSERT` na mão seria mais código
+para o mesmo resultado.
+
+**Por que SQLite e não manter os DataFrames na memória:** o SQLite deixa a modelagem
+explícita (tabelas + views documentam as regras de negócio), dá joins e agregações limpos, e
+é o mesmo arquivo que o checkpointer de conversa usa. O LLM nunca gera SQL — as tools usam
+consultas fixas com parâmetros.
 
 ### 5. Conceito de "hoje" — `DATA_REFERENCE_DATE` configurável
 
@@ -226,18 +258,35 @@ Chat web pronto em poucas linhas, bom para a demonstração e para gerar os exem
 `thread_id` fica editável na barra lateral para mostrar a persistência. Há também um REPL
 (`python agent.py`) para teste rápido no terminal.
 
-### 9. Persona e prompt
+### 9. Persona e prompt — "melodIA"
 
-Derivada da seção 7 do manual: tom informal e acolhedor ("um amigo que entende de música"),
-respostas curtas estilo WhatsApp, cumprimenta pelo nome quando disponível. O system prompt
-(`prompts.py`) também carrega os **guardrails**: nunca informar preço/estoque/prazo sem
-ferramenta (seção 7.1 — "informações precisas"), sempre mostrar preço original + % + final nas
-promoções, oferecer alternativas para itens sem estoque, e recusar assuntos fora do escopo da
-loja (com exemplo concreto de recusa para ancorar melhor um modelo pequeno).
+O nome do assistente é **melodIA** (trocadilho *melodia* + *IA*). Nenhum material do desafio
+dá um nome; a escolha foi minha, e ela combina com a identidade musical da loja e com o tom
+informal que o manual pede — um nome com o qual o cliente conversa, não um rótulo genérico.
+Fora isso, a persona vem da **seção 7 do manual**: tom acolhedor ("um amigo que entende de
+música"), respostas curtas estilo WhatsApp, cumprimenta pelo nome quando disponível.
 
-O agente **não recebe um nome próprio** — se identifica como "assistente virtual da Empório da
-Música". Nenhum material do desafio dá um nome, e inventar um seria adicionar ficção não
-pedida.
+O system prompt (`prompts.py`) também carrega os **guardrails**: nunca informar
+preço/estoque/prazo sem ferramenta (seção 7.1 — "informações precisas"), sempre mostrar preço
+original + % + final nas promoções, oferecer alternativas para itens sem estoque, apresentar
+listas item a item, não corrigir dados que o cliente informa, não inventar marcas, e recusar
+assuntos fora do escopo (com exemplo concreto de recusa para ancorar um modelo pequeno).
+Várias dessas regras foram acrescentadas **depois de observar falhas em conversas reais** —
+ver os commits `fix: ...` e `prompt: ...`.
+
+### 10. Configuração — `.env` via `python-dotenv`
+
+`config.py` lê um `.env` (não versionado) com `OPENAI_BASE_URL`, `MODEL`,
+`DATA_REFERENCE_DATE`. Mantém a configuração fora do código e do git, e torna o projeto
+agnóstico ao modelo/endpoint — trocar o LM Studio por uma API é mudar duas linhas do `.env`,
+sem tocar em código.
+
+### 11. Testes — `assert` + `__main__`, sem framework
+
+`test_agent.py` são 6 funções com `assert`, rodadas por um `main()` próprio. Cobrem a lógica
+não-trivial (views do ETL, roteamento de política, verificação de identidade, montagem do
+grafo) sem chamar o LLM. Para 6 checks, pytest seria uma dependência a mais sem ganho;
+`python test_agent.py` roda em qualquer lugar.
 
 ---
 
@@ -281,19 +330,24 @@ fluxo:
 
 1. **Leitura e entrevista (plan mode).** O Claude leu o enunciado, o manual de políticas e os 6
    CSVs, mapeou os *quirks* dos dados, e então me entrevistou — **uma decisão de cada vez** —
-   sobre as 8 escolhas técnicas (abordagem do agente, acesso às políticas, camada de dados,
-   data de referência, histórico, identificação, interface, modelo). Para cada uma ele
-   apresentou opções com trade-offs e uma recomendação; **as decisões foram minhas**.
-2. **Plano aprovado.** As decisões viraram um plano e um `CHECKLIST.md` dividido em 8 partes.
-3. **Execução por partes.** Cada parte: implementar → escrever o teste (`test_agent.py`,
-   `assert` puro, sem framework) → rodar → **um commit por parte** (histórico incremental, sem
-   *force-push*, como o enunciado pede).
+   sobre as escolhas técnicas (abordagem do agente, acesso às políticas, camada de dados, data
+   de referência, histórico, identificação, interface, modelo). Para cada uma ele apresentou
+   opções com trade-offs e uma recomendação; **as decisões foram minhas**.
+2. **O loop decisão → README.** Cada decisão fechada foi registrada na seção "Decisões
+   técnicas" com a motivação, antes de virar código. Ajustes feitos depois (ex.: regras de
+   prompt após ver falhas em conversas reais, ou o nome "melodIA") entram pelo mesmo loop: muda
+   a decisão, muda a seção.
+3. **Plano e execução por partes.** As decisões viraram um plano e um `CHECKLIST.md` em 8
+   partes. Cada parte: implementar → escrever o teste (`test_agent.py`, `assert` puro) → rodar →
+   **um commit por parte** (histórico incremental, sem *force-push*, como o enunciado pede).
 4. **Documentação viva.** `CLAUDE.md` (visão geral + decisões + armadilhas dos dados) e
    `CHECKLIST.md` foram mantidos atualizados ao longo do caminho.
 
-O que **eu** decidi e revisei: stack (LangChain, LM Studio, `pymupdf4llm`), todas as 8 decisões
-técnicas, o recorte de escopo de cada parte e a redação final. O que o **Claude** fez: análise
-dos dados, primeira implementação de cada módulo, os testes, e os rascunhos de documentação.
+O que **eu** decidi e revisei: a stack inteira (LangChain/LangGraph, LM Studio, `pymupdf4llm`,
+SQLite, Streamlit), todas as decisões técnicas, o nome do assistente, o recorte de cada parte
+e a redação final. O que o **Claude** fez: análise dos dados, primeira implementação de cada
+módulo, os testes, os rascunhos de documentação, e o *smoke test* que revelou os ajustes de
+prompt.
 
 ---
 

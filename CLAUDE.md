@@ -33,13 +33,13 @@ Entregáveis: repo público + `README.md` (setup + justificativas + limitações
 | 5 | Histórico de conversa | Checkpointer **`SqliteSaver`** do LangGraph, por `thread_id` | Persiste entre execuções, reaproveita o SQLite. Cliente volta e o agente lembra. |
 | 6 | Identificação do cliente | Verificação leve: `status_pedido(order_id, identificador)` casa nome OU e-mail do pedido | Consciência de LGPD (citada na política) sem montar auth de verdade. |
 | 7 | Interface | **Streamlit** | Chat web pra demo; `thread_id` em `st.session_state`. |
-| 8 | Modelo / provedor | **LM Studio** local; código agnóstico (base_url + nome via `.env`) | Sem custo, offline. README recomenda Qwen2.5-7B-Instruct (tool calling + PT-BR). |
+| 8 | Modelo / provedor | **LM Studio** local; código agnóstico (base_url + nome via `.env`), default `qwen/qwen3.5-9b` | Sem custo, offline, PII não sai da máquina. Smoke test 6/6 com qwen3.5-9b. |
 
-**Defaults assumidos** (documentar como suposições no README):
+**Defaults assumidos** (documentados no README):
 - Idioma: **PT-BR apenas**.
-- Persona: informal e acolhedora ("amigo que entende de música"), cumprimenta pelo nome se
-  conhecido, evita robotização, assina com "Sua música começa aqui." Sem nome próprio
-  inventado → "assistente virtual do Empório da Música" (Pedro pode batizar).
+- Persona: nome **melodIA** (decisão do Pedro; trocadilho melodia+IA). Informal e acolhedora
+  ("amigo que entende de música"), cumprimenta pelo nome se conhecido, evita robotização,
+  bordão "Sua música começa aqui." com parcimônia. Regras derivam da seção 7 do manual.
 - Fora de escopo: acessórios (cordas, palhetas, cabos, cases, pedais, amplificadores) →
   redireciona educadamente; perguntas alheias → recusa cordial e volta pro contexto da loja.
 - Guardrails: nunca inventar preço/estoque/prazo sem tool; promoção sempre com preço
@@ -113,4 +113,6 @@ o PDF do enunciado no repo.
 - Regras de política vivem no **texto** (`policies.md`), não hard-coded (exceção: cálculos
   auxiliares como `dias_desde_pedido`, que a tool entrega pronto pro agente comparar).
 - Trabalhar **por partes** (CHECKLIST), 1 commit por parte, sem force-push.
-- Decisão técnica = opções + recomendação + Pedro escolhe + justificativa no README.
+- **O loop:** decisão técnica = opções + recomendação + Pedro escolhe + registrada na seção
+  "Decisões técnicas" do README com a motivação. Toda tecnologia/lib usada no código tem
+  entrada lá. Mudou a decisão (ex.: ajuste pós-teste real) → muda a seção.

@@ -9,7 +9,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from agent import build_agent, responder
 from config import MODEL, OPENAI_BASE_URL
 
-st.set_page_config(page_title="Empório da Música — Atendimento", page_icon="🎸")
+st.set_page_config(page_title="melodIA — Empório da Música", page_icon="🎸")
 
 
 @st.cache_resource
@@ -34,7 +34,7 @@ def _historico(agente, thread_id: str) -> list:
             for m in msgs if isinstance(m, (HumanMessage, AIMessage)) and m.content]
 
 
-st.title("🎸 Empório da Música")
+st.title("🎸 melodIA · Empório da Música")
 st.caption("Sua música começa aqui. — assistente virtual de atendimento")
 
 if "thread_id" not in st.session_state:
