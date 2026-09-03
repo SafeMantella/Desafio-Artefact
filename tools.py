@@ -282,25 +282,34 @@ def _pagamento(m: str) -> str:
     return f"cartão de crédito em {mx.group(1)}x" if mx else (m or "não informado")
 
 
+_PARTICULAS = {"de", "da", "do", "dos", "das", "e"}
+
+
 def _identidade_confere(identificador: str, nome: str, email: str) -> bool:
+    """Verificação leve, mas não trivial de burlar: e-mail exato OU pelo menos duas partes
+    inteiras do nome cadastrado (nome + sobrenome). Match de palavra inteira, não substring —
+    "santos" ou "ana" sozinhos NÃO liberam o pedido.
+    """
     ident = _norm(identificador)
     if not ident:
         return False
     if ident == _norm(email):
         return True
-    tokens = [t for t in ident.split() if len(t) > 1]
-    nome_norm = _norm(nome)
-    return bool(tokens) and all(t in nome_norm for t in tokens)
+    partes_nome = set(_norm(nome).split())
+    tokens = [t for t in ident.split() if len(t) > 1 and t in partes_nome]
+    significativos = [t for t in tokens if t not in _PARTICULAS]
+    return len(significativos) >= 2
 
 
 @tool
 def status_pedido(order_id: int, identificador: str) -> str:
-    """Consulta o andamento de um pedido. Exige verificação leve de identidade (LGPD): só
-    retorna os dados se `identificador` bater com o nome OU o e-mail do cliente do pedido.
+    """Consulta o andamento de um pedido. Exige verificação de identidade (LGPD): só retorna
+    os dados se `identificador` for o e-mail exato OU trouxer nome E sobrenome do cliente do
+    pedido. Um nome só (ex.: "Ana") ou um sobrenome só NÃO é aceito.
 
     order_id: número do pedido.
-    identificador: nome completo (ou nome e sobrenome) ou e-mail do cliente, informado por ele.
-    Se o cliente ainda não informou, PEÇA antes de chamar esta ferramenta.
+    identificador: e-mail, ou nome e sobrenome do cliente, informado por ele. Se o cliente
+    ainda não informou, PEÇA antes de chamar esta ferramenta.
 
     Retorna status, itens, valor, forma de pagamento, previsão de entrega, código de
     rastreio e há quantos dias o pedido foi feito (para aplicar prazos de troca/devolução).

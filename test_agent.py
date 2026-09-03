@@ -95,6 +95,22 @@ def test_status_pedido():
     assert "Não encontrei" in status_pedido.invoke({"order_id": 999, "identificador": "x"})
 
 
+def test_identidade_nao_burlavel():
+    # antes: "santos"/"ana" liberavam pedidos por substring/token único. Agora não.
+    assert "não posso liberar" in status_pedido.invoke({"order_id": 6, "identificador": "santos"})
+    assert "não posso liberar" in status_pedido.invoke({"order_id": 11, "identificador": "ana"})
+    # nome + sobrenome reais continuam liberando
+    assert "Pedido 6" in status_pedido.invoke({"order_id": 6, "identificador": "Gabriel Santos"})
+
+    # varredura: nenhum sobrenome isolado libera qualquer pedido de 1 a 20
+    conn = sqlite3.connect(DB_PATH)
+    for sobren in "santos silva costa souza oliveira pereira lima ferreira".split():
+        for oid in range(1, 21):
+            r = status_pedido.invoke({"order_id": oid, "identificador": sobren})
+            assert "não posso liberar" in r, f"{sobren!r} liberou o pedido {oid}"
+    conn.close()
+
+
 def test_agente_compila():
     """O grafo monta, as 4 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
     from agent import build_agent
@@ -105,7 +121,8 @@ def test_agente_compila():
 
 
 TESTS = [test_etl_views, test_consultar_politica, test_buscar_produtos,
-         test_detalhe_produto, test_status_pedido, test_agente_compila]
+         test_detalhe_produto, test_status_pedido, test_identidade_nao_burlavel,
+         test_agente_compila]
 
 
 def main():

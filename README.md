@@ -238,13 +238,19 @@ O dataset é um *snapshot*, então o agente ancora o "hoje" numa data de referê
 `dias_desde_pedido` já calculado — o agente compara com o prazo que vem do **texto da
 política**, sem regra de prazo hard-coded.
 
-### 6. Verificação de identidade — leve, consciente de LGPD
+### 6. Verificação de identidade — consciente de LGPD
 
 Um pedido expõe PII (nome, e-mail, itens, previsão de entrega). `status_pedido` exige um
-`identificador` e só libera os dados se ele bater com o **e-mail exato** ou com **todos os
-tokens do nome** do cliente do pedido. Não é autenticação de verdade — é uma barreira
-proporcional a um protótipo, alinhada à seção 9 (LGPD) do manual. O caminho de produção
-(login, verificação por código) está nas limitações.
+`identificador` e só libera os dados se ele for o **e-mail exato** ou trouxer **nome e
+sobrenome** do cliente — pelo menos duas partes inteiras do nome cadastrado, com match de
+**palavra inteira** (não substring). Um primeiro nome só ("Ana"), um sobrenome só
+("Santos") ou um pedaço de palavra ("ana" casando com "Mariana") **não** liberam nada.
+
+A primeira versão usava match de substring com um token só — o que, combinado com `order_id`
+sequencial e sobrenomes comuns, era burlável por força bruta. Está corrigido e coberto por
+teste (`test_identidade_nao_burlavel` varre os 50 clientes × 20 pedidos). Ainda **não** é
+autenticação de verdade (o caminho de produção — login, código por e-mail/WhatsApp, rate
+limit no `order_id` — está nas limitações).
 
 ### 7. Histórico de conversa — checkpointer SQLite do LangGraph
 
@@ -299,8 +305,9 @@ grafo) sem chamar o LLM. Para 6 checks, pytest seria uma dependência a mais sem
   hardware e de quantas ferramentas o agente encadeia num turno. Aceitável para demonstração,
   não para produção — uma API resolveria.
 - **Sem guard determinístico de escopo.** A recusa de assuntos fora da loja é só via prompt.
-- **Verificação de identidade é leniente** (aceita nome parcial). Suficiente para protótipo,
-  não para produção.
+- **Verificação de identidade não é autenticação.** Exige nome+sobrenome ou e-mail exato
+  (ver decisão 6), mas não há login, código de confirmação nem rate limit — e `order_id` é
+  sequencial. Suficiente para protótipo, não para produção.
 - **Busca de produto é lexical** (casa palavras no nome e nas specs). "Violão para iniciante"
   não vira uma busca semântica.
 - **`consultar_politica` é por palavra-chave.** Uma pergunta com vocabulário muito distante das
