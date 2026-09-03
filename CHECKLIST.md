@@ -69,8 +69,9 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 - [x] versões fixadas em `requirements.txt`
 - [x] commit `readme completo`
 
-## Parte 8 — Fechamento
-- [ ] revisar histórico de commits
-- [ ] batizar a persona? (decisão de 2 min do Pedro; default = "assistente virtual do Empório da Música")
-- [ ] push; confirmar repo público
-- [ ] `git clone` limpo + seguir o README do zero
+## Parte 8 — Fechamento ✅
+- [x] histórico: 11 commits incrementais, sem force-push
+- [x] persona: sem nome próprio ("assistente virtual do Empório da Música") — decisão registrada no README §9
+- [x] push; repo público confirmado
+- [x] `git clone` limpo → venv → `build_db.py` → `test_agent.py` 6/6 (partes offline)
+- [ ] opcional (Pedro): rodar `streamlit run app.py` num clone limpo com o LM Studio, e decidir se mantém `desafio_tecnico_ai_eng_artefact.pdf` no repo

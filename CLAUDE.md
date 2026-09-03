@@ -74,9 +74,12 @@ data/              dados fornecidos — NÃO alterar
 
 ## 5. Estado atual
 
-Ver `CHECKLIST.md` (fonte de verdade do progresso). Em resumo: **Partes 0-5 com código
-pronto e testado** (`test_agent.py`: 6/6). Falta: smoke test ao vivo (Parte 4b, precisa do
-LM Studio), exemplos de conversa (Parte 6), README (Parte 7), fechamento (Parte 8).
+**Completo.** Ver `CHECKLIST.md`. Partes 0-8 fechadas: ETL, políticas, 4 tools, agente,
+Streamlit, 5 exemplos, README, clone limpo verificado. `test_agent.py`: 6/6. Smoke test ao
+vivo passou 6/6 com `qwen/qwen3.5-9b`. 11 commits incrementais.
+
+Pendências opcionais (Pedro): validar o Streamlit ao vivo num clone limpo; decidir se mantém
+o PDF do enunciado no repo.
 
 ## 6. Armadilhas dos dados (descobertas na exploração)
 
