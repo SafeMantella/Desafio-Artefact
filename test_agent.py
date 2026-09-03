@@ -66,6 +66,12 @@ def test_buscar_produtos():
     r3 = buscar_produtos.invoke({"termo": "nylon", "categoria": "ukulele", "preco_max": 300})
     assert "Kala KA-15S" in r3
 
+    # "existe mas indisponível" não pode virar "não existe" (o agente dizia "não está no
+    # catálogo", o que é falso) — e o inexistente continua sendo inexistente.
+    r4 = buscar_produtos.invoke({"termo": "Giannini GF-3D Dreadnought Sunburst"})
+    assert "EXISTE no catálogo" in r4 and "SEM ESTOQUE" in r4
+    assert "Não encontrei" in buscar_produtos.invoke({"termo": "Xurupita"})
+
 
 def test_detalhe_produto():
     r = detalhe_produto.invoke({"nome_ou_id": "Takamine GD20"})

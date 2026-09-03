@@ -174,32 +174,47 @@ def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float = 0,
     Retorna uma lista com preço de tabela, preço promocional (se houver promoção ativa) e
     preço à vista no PIX. Não invente itens: use só o que esta ferramenta retornar.
     """
-    sql = "SELECT * FROM v_produto WHERE 1=1"
-    args: list = []
-    if apenas_disponiveis:
-        sql += " AND disponivel = 1"
-    if preco_min and preco_min > 0:
-        sql += " AND preco_tabela >= ?"; args.append(preco_min)
-    if preco_max and preco_max > 0:
-        sql += " AND preco_tabela <= ?"; args.append(preco_max)
-
     cat_alvo = _CATEGORIAS.get(_norm(categoria)) if categoria else None
-    if cat_alvo:
-        sql += " AND categoria = ?"; args.append(cat_alvo)
 
-    with _conn() as c:
-        rows = c.execute(sql + " ORDER BY preco_tabela", args).fetchall()
+    def _consulta(so_disponiveis: bool) -> list[sqlite3.Row]:
+        sql = "SELECT * FROM v_produto WHERE 1=1"
+        args: list = []
+        if so_disponiveis:
+            sql += " AND disponivel = 1"
+        if preco_min and preco_min > 0:
+            sql += " AND preco_tabela >= ?"; args.append(preco_min)
+        if preco_max and preco_max > 0:
+            sql += " AND preco_tabela <= ?"; args.append(preco_max)
+        if cat_alvo:
+            sql += " AND categoria = ?"; args.append(cat_alvo)
 
-    # termo: casa cada palavra (sem acento) no nome; se não veio categoria explícita,
-    # também tenta interpretar o termo como categoria.
-    if termo:
-        if not cat_alvo:
-            cat_do_termo = next((v for k, v in _CATEGORIAS.items() if k in _norm(termo)), None)
-            if cat_do_termo:
-                rows = [r for r in rows if r["categoria"] == cat_do_termo]
-        palavras = [p for p in _norm(termo).split() if p not in _CATEGORIAS]
-        for p in palavras:
-            rows = [r for r in rows if p in _norm(f"{r['name']} {r['specs'] or ''}")]
+        with _conn() as c:
+            rows = c.execute(sql + " ORDER BY preco_tabela", args).fetchall()
+
+        # termo: casa cada palavra (sem acento) no nome; se não veio categoria explícita,
+        # também tenta interpretar o termo como categoria.
+        if termo:
+            if not cat_alvo:
+                cat_do_termo = next((v for k, v in _CATEGORIAS.items() if k in _norm(termo)), None)
+                if cat_do_termo:
+                    rows = [r for r in rows if r["categoria"] == cat_do_termo]
+            palavras = [p for p in _norm(termo).split() if p not in _CATEGORIAS]
+            for p in palavras:
+                rows = [r for r in rows if p in _norm(f"{r['name']} {r['specs'] or ''}")]
+        return rows
+
+    rows = _consulta(apenas_disponiveis)
+
+    # "existe mas está indisponível" ≠ "não existe": sem esta distinção o agente diz ao
+    # cliente que o produto não está no catálogo, o que é falso (visto ao vivo com o GF-3D).
+    if not rows and apenas_disponiveis:
+        indisponiveis = _consulta(False)
+        if indisponiveis:
+            corpo = "\n".join(f"- {_linha_produto(r)}" for r in indisponiveis[:5])
+            return ("Nada DISPONÍVEL com esses critérios, mas isto EXISTE no catálogo (só não "
+                    f"dá para comprar agora):\n{corpo}\n\n"
+                    "Diga ao cliente que o item existe e está indisponível — não diga que não "
+                    "está no catálogo — e ofereça alternativas (busque de novo, sem o termo).")
 
     if not rows:
         return ("Não encontrei nenhum instrumento com esses critérios. "
