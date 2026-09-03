@@ -1,21 +1,31 @@
 """Avaliação do agente contra o LLM de verdade. Precisa do LM Studio no ar.
 
-    python test_live.py            # todos os casos
-    python test_live.py catalogo   # só os casos cujo nome contém "catalogo"
+    python test_live.py                  # todos os casos, 3 rodadas cada
+    python test_live.py catalogo         # só os casos cujo nome contém "catalogo"
+    python test_live.py --rodadas 1      # 1 rodada (rápido, para iterar)
 
 Cada caso declara: mensagens do cliente → qual ferramenta o agente devia (ou não) chamar +
 o que a resposta final deve / não deve conter. Complementa test_agent.py (que não usa o LLM).
-É lento: ~1–2 min por caso. Não roda no test_agent.py de propósito.
+
+Por que k rodadas: o agente é não determinístico. Um caso que passa uma vez não prova nada —
+o que interessa é a TAXA de acerto. Cada rodada usa uma thread nova. O resultado sai em
+eval_report.md com a taxa e a latência por caso.
+É lento: ~1-2 min por caso por rodada. Não roda no test_agent.py de propósito.
 """
 import re
+import statistics
 import sys
+import time
 import uuid
+from datetime import datetime
 
 from langchain_core.messages import AIMessage
 
 from agent import build_agent
-from config import MODEL
+from config import MODEL, ROOT
 from tools import status_pedido
+
+RELATORIO = ROOT / "eval_report.md"
 
 # contem / nao_contem: substrings (case-insensitive) na resposta final.
 #   em `contem`, "a|b" = qualquer uma serve (evita blacklist de frase, que é sempre incompleta).
@@ -110,6 +120,44 @@ CASOS = [
     # A isca que gerou o "5 dias úteis" inventado. Grounding é mitigação probabilística, não
     # fix determinístico (README §9): mesmo input já deu resposta limpa E com resíduo. Fica
     # como sinal, não como gate — rode 3x antes de acreditar num "ok" isolado.
+    # O caso POSITIVO de arrependimento, que não existia. Com DATA_REFERENCE_DATE=2026-03-25
+    # nenhum pedido está a menos de 7 dias da COMPRA — mas o §4.1 conta do RECEBIMENTO, que o
+    # sistema não registra. O agente tem que perguntar e aceitar a data que o cliente deu.
+    dict(nome="devolucao_recebido_dentro_do_prazo",
+         turnos=["Quero devolver o pedido 7, me arrependi da compra.",
+                 "Letícia Gonçalves Rocha",
+                 "Recebi ele ontem."],
+         tool_esperada="status_pedido",
+         contem=["7 dias"],
+         nao_contem=["fora do prazo", "prazo expirou", "não é mais possível"]),
+
+    # Categoria que o manual §1 cita mas está sem produtos no catálogo. O bug era a tool
+    # descartar o filtro em silêncio e devolver 20 ukuleles; "R$" na resposta denuncia isso.
+    dict(nome="categoria_sem_itens_no_catalogo",
+         turnos=["Vocês têm saxofone?"],
+         contem=["não temos|não há|nenhum|sem itens|não tem"],
+         nao_contem=["R$"]),
+
+    # A faixa de preço tem que valer sobre o preço promocional: o Ohana CK-20 é R$ 549 de
+    # tabela e R$ 439,20 com a promoção ativa — cabe em "até R$ 500".
+    dict(nome="faixa_de_preco_usa_promocao",
+         turnos=["Quais ukuleles vocês têm até R$ 500?"],
+         tool_esperada="buscar_produtos",
+         contem=["Ohana CK-20", "439,20"], nao_contem=[]),
+
+    # Poda de histórico (agent._podar) ponta a ponta: depois de vários turnos com retorno de
+    # política no meio, o agente ainda tem que chamar a ferramenta e acertar o preço.
+    dict(nome="conversa_longa_nao_perde_a_ferramenta",
+         turnos=["Oi, tudo bem?",
+                 "Qual o endereço da loja?",
+                 "E que horas vocês abrem no sábado?",
+                 "Vocês parcelam no cartão?",
+                 "Quais violões vocês têm até R$ 1000?",
+                 "Entendi. E qual a política de troca de vocês?",
+                 "Beleza. Quanto custa o Takamine GD20?"],
+         tool_esperada="detalhe_produto",
+         contem=["2.199"], nao_contem=[]),
+
     dict(nome="atraso_nao_inventa_compensacao",
          turnos=["Oi, meu pedido 8 tá atrasado. Vocês reembolsam por causa disso?",
                  "Ana Carolina Ferreira"],
@@ -173,27 +221,91 @@ def _checar(caso, tools, resp):
     return erros
 
 
+def _args() -> tuple[str, int]:
+    """filtro por nome + número de rodadas (`--rodadas N`, default 3)."""
+    argv = sys.argv[1:]
+    rodadas = 3
+    if "--rodadas" in argv:
+        i = argv.index("--rodadas")
+        rodadas = int(argv[i + 1])
+        del argv[i:i + 2]
+    return (argv[0] if argv else ""), rodadas
+
+
+def _escrever_relatorio(resultados: list[dict], rodadas: int) -> None:
+    """eval_report.md — a evidência versionada, para não depender de rodar o LM Studio."""
+    total = len(resultados)
+    limpos = sum(r["passes"] == rodadas for r in resultados)
+    gate = sum(r["passes"] < rodadas and not r["caso"].get("flaky") for r in resultados)
+    todos_tempos = [t for r in resultados for t in r["tempos"]]
+
+    linhas = [
+        "# Avaliação do agente — `test_live.py`", "",
+        f"Gerado por `python test_live.py --rodadas {rodadas}` em "
+        f"{datetime.now().strftime('%d/%m/%Y %H:%M')}.", "",
+        "| | |", "|---|---|",
+        f"| Modelo | `{MODEL}` (LM Studio, local) |",
+        f"| Casos | {total} |",
+        f"| Rodadas por caso | {rodadas} |",
+        f"| Passaram em todas as rodadas | {limpos}/{total} |",
+        f"| Falhas que travam o gate | {gate} |",
+        f"| Latência por caso (mediana das {len(todos_tempos)} execuções) | "
+        f"{statistics.median(todos_tempos):.0f} s |",
+        f"| Latência do pior caso | {max(todos_tempos):.0f} s |", "",
+        "O agente é não determinístico: cada caso roda várias vezes, em threads novas, e o que",
+        "vale é a **taxa**. Casos marcados `flaky` no código são conhecidamente instáveis —",
+        "aparecem aqui com a taxa real, mas não derrubam o resultado.", "",
+        "| Caso | Taxa | Mediana | Pior | Falhou com |", "|---|---|---|---|---|",
+    ]
+    for r in resultados:
+        c, tempos = r["caso"], r["tempos"]
+        marca = " *(flaky)*" if c.get("flaky") else ""
+        motivo = "—"
+        if r["erros"]:
+            vistos = {e for _, erros, _ in r["erros"] for e in erros}
+            motivo = "; ".join(sorted(vistos))[:160].replace("|", "/")
+        linhas.append(f"| `{c['nome']}`{marca} | {r['passes']}/{rodadas} | "
+                      f"{statistics.median(tempos):.0f} s | {max(tempos):.0f} s | {motivo} |")
+
+    RELATORIO.write_text("\n".join(linhas) + "\n", encoding="utf-8")
+    print(f"\nrelatório -> {RELATORIO.name}")
+
+
 def main():
-    filtro = sys.argv[1] if len(sys.argv) > 1 else ""
+    filtro, rodadas = _args()
     casos = [c for c in CASOS if filtro in c["nome"]]
-    print(f"modelo: {MODEL} · {len(casos)} caso(s)\n")
+    print(f"modelo: {MODEL} · {len(casos)} caso(s) × {rodadas} rodada(s)\n")
     agente = build_agent()
-    falhas = flakes = 0
+
+    resultados = []
     for c in casos:
-        tools, resp = _rodar(agente, c["turnos"], f"eval-{c['nome']}-{uuid.uuid4().hex[:6]}")
-        erros = _checar(c, tools, resp)
-        if erros:
-            flaky = c.get("flaky")
-            flakes += bool(flaky)
-            falhas += not flaky
-            print(f"{'flaky' if flaky else 'FAIL '} {c['nome']}")
+        passes, tempos, erros_vistos = 0, [], []
+        for r in range(1, rodadas + 1):
+            t0 = time.perf_counter()
+            tools, resp = _rodar(agente, c["turnos"], f"eval-{c['nome']}-{uuid.uuid4().hex[:6]}")
+            tempos.append(time.perf_counter() - t0)
+            erros = _checar(c, tools, resp)
+            if erros:
+                erros_vistos.append((r, erros, resp))
+            else:
+                passes += 1
+        resultados.append(dict(caso=c, passes=passes, tempos=tempos, erros=erros_vistos))
+
+        flaky = c.get("flaky")
+        estado = "ok   " if passes == rodadas else ("flaky" if flaky else "FAIL ")
+        print(f"{estado} {c['nome']}  {passes}/{rodadas}  "
+              f"(mediana {statistics.median(tempos):.0f}s)")
+        for r, erros, resp in erros_vistos:
             for e in erros:
-                print(f"     - {e}")
-            print(f"     resposta: {resp[:600]!r}")
-        else:
-            print(f"ok   {c['nome']}")
-    print(f"\n{len(casos) - falhas - flakes}/{len(casos)} passaram"
+                print(f"     rodada {r}: {e}")
+            print(f"     resposta: {resp[:300]!r}")
+
+    limpos = sum(r["passes"] == rodadas for r in resultados)
+    falhas = sum(r["passes"] < rodadas and not r["caso"].get("flaky") for r in resultados)
+    flakes = sum(r["passes"] < rodadas and r["caso"].get("flaky") for r in resultados)
+    print(f"\n{limpos}/{len(casos)} passaram em todas as {rodadas} rodadas"
           + (f" ({flakes} flaky, não conta como falha)" if flakes else ""))
+    _escrever_relatorio(resultados, rodadas)
     raise SystemExit(1 if falhas else 0)
 
 
