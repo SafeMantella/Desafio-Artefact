@@ -70,6 +70,7 @@ def test_buscar_produtos():
 def test_detalhe_produto():
     r = detalhe_produto.invoke({"nome_ou_id": "Takamine GD20"})
     assert "R$ 2.199,00" in r and "PIX" in r and "R$ 2.089,05" in r
+    assert "Promoção ativa: nenhuma" in r  # GD20 não tem promo — não confundir com PIX
 
     # promoção ativa (produto 127) mostra preço promocional
     r2 = detalhe_produto.invoke({"nome_ou_id": "127"})

@@ -160,14 +160,15 @@ def _linha_produto(r: sqlite3.Row) -> str:
 
 
 @tool
-def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float | None = None,
-                    preco_max: float | None = None, apenas_disponiveis: bool = True) -> str:
+def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float = 0,
+                    preco_max: float = 0, apenas_disponiveis: bool = True) -> str:
     """Busca instrumentos no catálogo da loja. Use para perguntas sobre o que a loja tem,
     opções dentro de um preço, disponibilidade de um tipo de instrumento, etc.
 
     termo: texto livre para casar no nome (ex.: "Yamaha", "dreadnought", "nylon").
     categoria: tipo de instrumento (violão, guitarra, baixo, bateria, teclado, ukulele).
-    preco_min / preco_max: faixa de preço em reais (preço de tabela).
+    preco_min / preco_max: faixa de preço em reais (preço de tabela). Use 0 (padrão) para
+        "sem limite" — NUNCA passe None, null ou texto.
     apenas_disponiveis: se True (padrão), só lista o que está em estoque e à venda.
 
     Retorna uma lista com preço de tabela, preço promocional (se houver promoção ativa) e
@@ -177,9 +178,9 @@ def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float | Non
     args: list = []
     if apenas_disponiveis:
         sql += " AND disponivel = 1"
-    if preco_min is not None:
+    if preco_min and preco_min > 0:
         sql += " AND preco_tabela >= ?"; args.append(preco_min)
-    if preco_max is not None:
+    if preco_max and preco_max > 0:
         sql += " AND preco_tabela <= ?"; args.append(preco_max)
 
     cat_alvo = _CATEGORIAS.get(_norm(categoria)) if categoria else None
@@ -245,8 +246,10 @@ def detalhe_produto(nome_ou_id: str) -> str:
               f"Preço de tabela: {_brl(r['preco_tabela'])}"]
     if r["promo_ativa_pct"]:
         linhas.append(f"Promoção ativa: -{r['promo_ativa_pct']}% → {_brl(r['preco_promocional'])}")
+    else:
+        linhas.append("Promoção ativa: nenhuma")
     linhas.append(f"À vista no PIX: {_brl(r['preco_a_vista_pix'])}"
-                  + ("" if r["promo_ativa_pct"] else "  (5% de desconto sobre a tabela)"))
+                  + ("" if r["promo_ativa_pct"] else "  (desconto fixo de 5% do PIX, não é promoção)"))
     try:
         specs = json.loads(r["specs"])
         if specs:
