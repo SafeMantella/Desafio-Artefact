@@ -31,7 +31,7 @@ Entregáveis: repo público + `README.md` (setup + justificativas + limitações
 | 3 | Dados (CSVs) | ETL → **SQLite** (`emporio.db`) + views; SQL **parametrizado** nas tools (LLM não escreve SQL) | Mostra modelagem; joins/agregações limpos; sem risco de query gerada errada. |
 | 4 | Conceito de "hoje" | Config `DATA_REFERENCE_DATE` (default `2026-03-25`) | Dataset é snapshot; pedidos vão até 2026-03-22. Sem isso, toda política de prazo dá "vencido". |
 | 5 | Histórico de conversa | Checkpointer **`SqliteSaver`** do LangGraph, por `thread_id` | Persiste entre execuções, reaproveita o SQLite. Cliente volta e o agente lembra. |
-| 6 | Identificação do cliente | `status_pedido(order_id, identificador)`: e-mail exato OU nome+sobrenome (≥2 partes inteiras do nome, match de palavra inteira). `_identidade_confere` em `tools.py`; teste `test_identidade_nao_burlavel` | LGPD sem montar auth. v1 usava substring/1-token e era burlável por força bruta — corrigido. |
+| 6 | Identificação do cliente | `status_pedido`: e-mail exato OU (primeiro nome + ≥2 partes distintas do nome, match de palavra inteira, sem palavra fora do nome). `_identidade_confere` em `tools.py`; teste `test_identidade_nao_burlavel` (repetição/spray/sobrenome) | LGPD sem auth. v1 (substring/1-token) e v2 (≥2 tokens ignorando inválidos) eram burláveis — v3 exige o primeiro nome + sem lixo. |
 | 7 | Interface | **Streamlit** | Chat web pra demo; `thread_id` em `st.session_state`. |
 | 8 | Modelo / provedor | **LM Studio** local; código agnóstico (base_url + nome via `.env`), default `qwen/qwen3.5-9b` | Sem custo, offline, PII não sai da máquina. Smoke test 6/6 com qwen3.5-9b. |
 

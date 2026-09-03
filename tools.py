@@ -286,19 +286,26 @@ _PARTICULAS = {"de", "da", "do", "dos", "das", "e"}
 
 
 def _identidade_confere(identificador: str, nome: str, email: str) -> bool:
-    """Verificação leve, mas não trivial de burlar: e-mail exato OU pelo menos duas partes
-    inteiras do nome cadastrado (nome + sobrenome). Match de palavra inteira, não substring —
-    "santos" ou "ana" sozinhos NÃO liberam o pedido.
+    """Verificação leve, mas não trivial de burlar. Passa se:
+      - o identificador é o e-mail exato do cliente; OU
+      - traz o PRIMEIRO NOME do cliente + pelo menos 2 partes DISTINTAS do nome cadastrado,
+        e NENHUMA palavra que não seja parte do nome (match de palavra inteira, não substring).
+
+    Recusa: "santos"/"ana" sozinhos; "Ana Ana" (nome repetido); e "spray" de nomes comuns
+    (qualquer palavra fora do nome invalida tudo).
     """
     ident = _norm(identificador)
     if not ident:
         return False
     if ident == _norm(email):
         return True
-    partes_nome = set(_norm(nome).split())
-    tokens = [t for t in ident.split() if len(t) > 1 and t in partes_nome]
-    significativos = [t for t in tokens if t not in _PARTICULAS]
-    return len(significativos) >= 2
+    partes = _norm(nome).split()
+    if not partes:
+        return False
+    informados = [t for t in ident.split() if len(t) > 1 and t not in _PARTICULAS]
+    return (partes[0] in informados
+            and len(set(informados)) >= 2
+            and all(t in set(partes) for t in informados))
 
 
 @tool

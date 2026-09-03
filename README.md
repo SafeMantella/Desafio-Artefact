@@ -240,17 +240,20 @@ política**, sem regra de prazo hard-coded.
 
 ### 6. Verificação de identidade — consciente de LGPD
 
-Um pedido expõe PII (nome, e-mail, itens, previsão de entrega). `status_pedido` exige um
-`identificador` e só libera os dados se ele for o **e-mail exato** ou trouxer **nome e
-sobrenome** do cliente — pelo menos duas partes inteiras do nome cadastrado, com match de
-**palavra inteira** (não substring). Um primeiro nome só ("Ana"), um sobrenome só
-("Santos") ou um pedaço de palavra ("ana" casando com "Mariana") **não** liberam nada.
+Um pedido expõe PII (nome, e-mail, itens, previsão de entrega). `status_pedido` (função
+`_identidade_confere` em `tools.py`) só libera os dados se o `identificador` for o
+**e-mail exato** ou trouxer o **primeiro nome do cliente + ao menos duas partes distintas
+do nome cadastrado**, com match de **palavra inteira** e **sem nenhuma palavra que não seja
+do nome**. Rejeita: um nome só ("Ana"), um sobrenome só ("Santos"), pedaço de palavra
+("ana" ⊂ "Mariana"), nome repetido ("Ana Ana"), e "spray" de nomes comuns.
 
-A primeira versão usava match de substring com um token só — o que, combinado com `order_id`
-sequencial e sobrenomes comuns, era burlável por força bruta. Está corrigido e coberto por
-teste (`test_identidade_nao_burlavel` varre os 50 clientes × 20 pedidos). Ainda **não** é
-autenticação de verdade (o caminho de produção — login, código por e-mail/WhatsApp, rate
-limit no `order_id` — está nas limitações).
+Esta é a segunda versão. A primeira (match de substring, um token) e uma correção intermediária
+(≥2 tokens, mas ignorando palavras inválidas e sem deduplicar) eram burláveis: `order_id`
+sequencial + só saber o primeiro nome = 100% de acesso, ou uma string única de nomes comuns =
+70% às cegas. As duas falhas viraram teste (`test_identidade_nao_burlavel`: 50 clientes ×
+ataques de repetição/spray/sobrenome + casos legítimos). Ainda **não** é autenticação de
+verdade — produção pediria login, código por e-mail/WhatsApp e rate limit no `order_id` (nas
+limitações).
 
 ### 7. Histórico de conversa — checkpointer SQLite do LangGraph
 
@@ -278,11 +281,14 @@ original + % + final nas promoções, oferecer alternativas para itens sem estoq
 listas item a item, não corrigir dados que o cliente informa, não inventar marcas, e recusar
 assuntos fora do escopo (com exemplo concreto de recusa para ancorar um modelo pequeno).
 
-**Grounding de política:** o prompt manda o agente afirmar *apenas* o que aparece no texto
-que `consultar_politica` retornou, e dizer "vou confirmar com a equipe" quando a política não
-cobre a pergunta. Isso surgiu de uma falha real — o modelo tinha inventado "compensação por
-atraso na entrega", que não existe no manual. Guardrail de prompt não é garantia (modelo
-local, `temperature=0.3`); a validação repetível é o eval automatizado do agente, listado em
+**Grounding de política (mitigado, não eliminado):** o prompt manda o agente afirmar *apenas*
+o que aparece no texto que `consultar_politica` retornou, e dizer "vou confirmar com a equipe"
+quando a política não cobre a pergunta. Surgiu de uma falha real — o modelo tinha inventado
+"compensação por atraso na entrega", que não existe no manual. A regra **reduz** a frequência
+mas **não a zera**: para a mesma pergunta-isca, rodadas diferentes deram ora uma resposta
+100% ancorada na §5, ora um resíduo ("não temos reembolso por atraso" + um prazo inventado).
+Guardrail de prompt sobre modelo local (`temperature=0.3`) é probabilístico. Fechar de vez
+exigiria um check pós-resposta determinístico ou o eval automatizado — ambos listados em
 "Com mais tempo".
 
 Várias dessas regras foram acrescentadas **depois de observar falhas em conversas reais** —
@@ -327,8 +333,12 @@ grafo) sem chamar o LLM. Para 6 checks, pytest seria uma dependência a mais sem
 
 ## Com mais tempo
 
-- **Camada de avaliação** (LLM-as-judge + casos fixos) medindo: escolheu a ferramenta certa?
-  respeitou os guardrails? aplicou a política corretamente?
+- **Camada de avaliação** (casos fixos rodados contra o LLM: pergunta → ferramenta esperada →
+  substring esperada/proibida) medindo escolha de ferramenta, guardrails e aplicação de
+  política. É o que fecharia o resíduo do grounding de forma repetível.
+- **Guard de saída** determinístico para grounding de política: se a resposta final citar um
+  prazo/regra que não aparece literalmente no texto que a tool retornou naquele turno,
+  descartar e regenerar.
 - **Guard de entrada** determinístico para assuntos fora de escopo e para *prompt injection*.
 - **RAG semântico** no lugar da tabela de palavras-chave, se o corpo de políticas crescer.
 - **Autenticação real** para consulta de pedido (código por e-mail/WhatsApp).

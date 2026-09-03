@@ -78,11 +78,15 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 
 ## Parte 9 — Correções pós-análise (@ANALISTA)
 
-- [x] **#4 segurança** (`98ff555`): `_identidade_confere` exige e-mail exato OU nome+sobrenome
-  (≥2 partes inteiras, match de palavra, não substring). Fechou o bypass por sobrenome comum +
-  `order_id` sequencial. `test_identidade_nao_burlavel` (50 clientes × 20 pedidos).
-- [x] **#1 grounding** (`c7d8061`): prompt manda afirmar só o que `consultar_politica` retornou;
-  "confirmo com a equipe" quando a política é omissa. Testado 3× no cenário do pedido 8 + isca.
+- [x] **#4 segurança** (`98ff555` → revisão ANALISTA achou 2 bypasses → `<próximo commit>`):
+  v3 do `_identidade_confere` — e-mail exato OU (primeiro nome + ≥2 partes distintas do nome,
+  match de palavra inteira, sem palavra fora do nome). Fecha: sobrenome isolado, "Ana Ana"
+  (repetição, era 100%), spray de nomes comuns (era 70% às cegas). `test_identidade_nao_burlavel`
+  cobre os 3 ataques + casos legítimos. Varredura: 0/50 em cada ataque, 50/50 legítimo.
+- [x] **#1 grounding** (`c7d8061`): prompt manda afirmar só o que `consultar_politica` retornou.
+  ANALISTA reproduziu resposta limpa E resíduo pro mesmo input → é **mitigação probabilística,
+  não fix determinístico**. README §9 diz "mitigado, não eliminado"; fechar de vez = guard de
+  saída ou eval (#2). Não reabrir por prompt.
 - [ ] **#2** eval harness repetível contra o LLM (`test_live.py`, ~12 casos) — adiado
 - [ ] **#3** meio-termo de embeddings documentado no README (decisão 3) — adiado
 - [ ] **#5** README: nomear a tensão latência × volume do cenário do desafio — adiado

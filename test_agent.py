@@ -96,19 +96,36 @@ def test_status_pedido():
 
 
 def test_identidade_nao_burlavel():
-    # antes: "santos"/"ana" liberavam pedidos por substring/token único. Agora não.
+    from tools import _identidade_confere
+
+    # token isolado (substring / 1 palavra) não libera
     assert "não posso liberar" in status_pedido.invoke({"order_id": 6, "identificador": "santos"})
     assert "não posso liberar" in status_pedido.invoke({"order_id": 11, "identificador": "ana"})
-    # nome + sobrenome reais continuam liberando
+    # nome + sobrenome reais continuam liberando (por nome e por e-mail)
     assert "Pedido 6" in status_pedido.invoke({"order_id": 6, "identificador": "Gabriel Santos"})
+    assert "Pedido 5" in status_pedido.invoke({"order_id": 5, "identificador": "Rafael Pereira"})
 
-    # varredura: nenhum sobrenome isolado libera qualquer pedido de 1 a 20
     conn = sqlite3.connect(DB_PATH)
+    clientes = conn.execute("SELECT name, email FROM customers").fetchall()
+    conn.close()
+
+    # ataque 1: primeiro nome repetido ("Ana Ana")
+    for nome, email in clientes:
+        p = nome.split()[0]
+        assert not _identidade_confere(f"{p} {p}", nome, email), f"'{p} {p}' burlou {nome}"
+
+    # ataque 2: string única com dezenas de nomes/sobrenomes comuns, conhecimento zero
+    spray = ("ana maria jose pedro joao lucas rafael bruno gabriel thiago diego marcelo "
+             "felipe mariana juliana camila fernanda patricia leticia amanda beatriz larissa "
+             "silva santos costa souza oliveira pereira lima ferreira rodrigues almeida araujo "
+             "carvalho ribeiro martins gomes dias nunes cardoso mendes barbosa")
+    for nome, email in clientes:
+        assert not _identidade_confere(spray, nome, email), f"spray burlou {nome}"
+
+    # ataque 3: sobrenomes isolados, cada pedido
     for sobren in "santos silva costa souza oliveira pereira lima ferreira".split():
         for oid in range(1, 21):
-            r = status_pedido.invoke({"order_id": oid, "identificador": sobren})
-            assert "não posso liberar" in r, f"{sobren!r} liberou o pedido {oid}"
-    conn.close()
+            assert "não posso liberar" in status_pedido.invoke({"order_id": oid, "identificador": sobren})
 
 
 def test_agente_compila():
