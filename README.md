@@ -195,6 +195,14 @@ relevante(s).
   mais um ponto de falha para resolver um problema que uma tabela de palavras-chave resolve de
   forma **determinística** e explicável. RAG semântico só se justificaria com uma quantidade massiva de
   documentos.
+- **Por que não o meio-termo (embeddings sem vector DB):** dava para embutir as 10 seções com
+  um modelo de embedding local (o LM Studio já serve um, `text-embedding-nomic-embed-text-v1.5`)
+  e fazer *cosine similarity* em memória — sem chunking, sem store, sem persistência. É a opção
+  mais defensável depois da atual e resolveria a limitação real da busca por palavra-chave
+  (vocabulário fora do dicionário). Não foi feita porque, para 10 seções nomeadas, o ganho não
+  paga a perda de determinismo/testabilidade (o roteamento por palavra-chave tem 7 asserts que
+  travam "arrependimento→§4" etc.); com o corpo de políticas crescendo, essa é a primeira
+  mudança a fazer — está em "Com mais tempo".
 - **Por que não jogar o manual inteiro no system prompt:** gastaria ~4k tokens de contexto em
   todo turno (a janela de um modelo local é menor) e misturaria política irrelevante no
   raciocínio.
