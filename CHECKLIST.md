@@ -87,7 +87,7 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
   ANALISTA reproduziu resposta limpa E resíduo pro mesmo input → é **mitigação probabilística,
   não fix determinístico**. README §9 diz "mitigado, não eliminado"; fechar de vez = guard de
   saída ou eval (#2). Não reabrir por prompt.
-- [x] **#2 eval harness** (`<commit>`): `test_live.py` — 13 casos ponta a ponta contra o LM
+- [x] **#2 eval harness** (`1c2734c`): `test_live.py` — 13 casos ponta a ponta contra o LM
   Studio (ferramenta esperada + contém/não-contém na resposta). Cobre catálogo, preço, PIX
   multi-turno, promoção falsa, políticas, devolução não-trivial, recusa de identidade sem
   vazar PII, fora de escopo, não inventar marca, produto sem estoque. Última rodada: 13/13.
