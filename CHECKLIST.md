@@ -78,7 +78,7 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 
 ## Parte 9 — Correções pós-análise (@ANALISTA)
 
-- [x] **#4 segurança** (`98ff555` → revisão ANALISTA achou 2 bypasses → `<próximo commit>`):
+- [x] **#4 segurança** (`98ff555` → revisão ANALISTA achou 2 bypasses → `d62afc5`):
   v3 do `_identidade_confere` — e-mail exato OU (primeiro nome + ≥2 partes distintas do nome,
   match de palavra inteira, sem palavra fora do nome). Fecha: sobrenome isolado, "Ana Ana"
   (repetição, era 100%), spray de nomes comuns (era 70% às cegas). `test_identidade_nao_burlavel`
