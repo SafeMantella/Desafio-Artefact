@@ -118,8 +118,11 @@ def consultar_politica(topico: str) -> str:
         return ("Não identifiquei o tópico. Assuntos cobertos pelo manual: "
                 f"{TOPICOS}. Reformule com uma dessas palavras.")
 
+    # devolve toda seção com match forte (>=5) — cobre perguntas de 2 assuntos
+    # ("endereço e horário"); no pior caso, a melhor seção sozinha.
     ordenadas = sorted(pontos, key=lambda s: pontos[s], reverse=True)
-    escolhidas = ordenadas[:2] if len(ordenadas) > 1 and pontos[ordenadas[1]] >= pontos[ordenadas[0]] * 0.6 else ordenadas[:1]
+    melhor = pontos[ordenadas[0]]
+    escolhidas = [s for s in ordenadas if pontos[s] >= 5 or pontos[s] >= melhor * 0.6][:3]
     return "\n\n---\n\n".join(_SECOES[s] for s in sorted(escolhidas, key=int))
 
 

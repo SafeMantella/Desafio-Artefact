@@ -29,9 +29,11 @@ Três a cinco conversas completas estão em [`examples/`](examples/).
 ### Pré-requisitos
 
 - **Python 3.11+**
-- **[LM Studio](https://lmstudio.ai/)** com um modelo que suporte *tool use* / function calling
-  (testado com **Qwen2.5-7B-Instruct**; Llama-3.1-8B-Instruct também funciona). Modelos maiores
-  respondem melhor em português e chamam as ferramentas de forma mais confiável.
+- **[LM Studio](https://lmstudio.ai/)** com um modelo que suporte *tool use* / function calling.
+  Desenvolvido e testado com **Qwen3.5-9B** (`qwen/qwen3.5-9b`); a família Qwen2.5-Instruct
+  (7B+) e Llama-3.1-8B-Instruct também funcionam. Modelos maiores respondem melhor em
+  português e chamam as ferramentas de forma mais confiável.
+  Sugestões no LM Studio: contexto de 16k+ e GPU offload no máximo.
 
 ### Passos
 
@@ -240,8 +242,11 @@ pedida.
 ## Limitações conhecidas
 
 - **Confiabilidade do *tool calling* depende do modelo local.** Um modelo fraco pode responder
-  preço/estoque sem chamar a ferramenta, ou vazar uma resposta fora de escopo. Com Qwen2.5-7B o
-  comportamento é bom, mas não garantido a 100%.
+  preço/estoque sem chamar a ferramenta, ou vazar uma resposta fora de escopo. Com Qwen3.5-9B o
+  comportamento no smoke test foi bom (6/6 cenários), mas não é garantido a 100%.
+- **Latência.** Localmente, cada turno leva de ~10 s a ~2 min, dependendo do modelo, do
+  hardware e de quantas ferramentas o agente encadeia num turno. Aceitável para demonstração,
+  não para produção — uma API resolveria.
 - **Sem guard determinístico de escopo.** A recusa de assuntos fora da loja é só via prompt.
 - **Verificação de identidade é leniente** (aceita nome parcial). Suficiente para protótipo,
   não para produção.

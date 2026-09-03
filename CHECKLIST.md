@@ -41,10 +41,12 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 - [ ] **smoke test ao vivo** (Pedro: subir LM Studio) — ver Parte 4b
 - [x] commit `agente react com langgraph + persona`
 
-## Parte 4b — Smoke test ao vivo
-- [ ] LM Studio: carregar modelo com tool use (ex.: Qwen2.5-7B-Instruct), Start Server, ajustar `MODEL` no `.env`
-- [ ] `python agent.py` e testar: "violões até R$1000?" · "quanto custa o Takamine GD20?" · "endereço/horário?" · "me arrependi do pedido 8" (→ identificação → política) · "vendem cordas?" · "capital da França?"
-- [ ] afinar prompt/tools conforme o comportamento do modelo
+## Parte 4b — Smoke test ao vivo ✅
+- [x] LM Studio: `qwen/qwen3.5-9b`, server no ar, `.env` com `MODEL=qwen/qwen3.5-9b`
+- [x] 6 cenários testados — 6/6 OK após 2 ajustes:
+  - `consultar_politica` agora devolve várias seções para perguntas de 2 assuntos (endereço + horário)
+  - prompt: responder todos os pontos da pergunta; "previsão" ≠ "entregue"
+- [x] latência observada: 10s–2min por turno (documentado no README)
 
 ## Parte 5 — Streamlit ✅ (código) · ⏳ validação ao vivo
 - [x] `app.py`: `st.chat_input`, `thread_id` editável na sidebar, "Nova conversa", aviso se LM Studio offline, retomada de histórico via checkpointer (`get_state`)
