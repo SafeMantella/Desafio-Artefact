@@ -9,6 +9,7 @@ import json
 import re
 import sqlite3
 import unicodedata
+from contextlib import closing
 from datetime import date
 
 from langchain_core.tools import tool
@@ -24,6 +25,8 @@ def _norm(s: str) -> str:
 
 
 def _conn() -> sqlite3.Connection:
+    """Sempre usar com `closing()`: o context manager do sqlite3 faz commit/rollback,
+    mas NÃO fecha a conexão — sem isso o processo do Streamlit vaza um handle por chamada."""
     c = sqlite3.connect(DB_PATH)
     c.row_factory = sqlite3.Row
     return c
@@ -188,7 +191,7 @@ def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float = 0,
         if cat_alvo:
             sql += " AND categoria = ?"; args.append(cat_alvo)
 
-        with _conn() as c:
+        with closing(_conn()) as c:
             rows = c.execute(sql + " ORDER BY preco_tabela", args).fetchall()
 
         # termo: casa cada palavra (sem acento) no nome; se não veio categoria explícita,
@@ -238,7 +241,7 @@ def detalhe_produto(nome_ou_id: str) -> str:
     nome_ou_id: o nome (ou parte dele) ou o id numérico do produto. Se houver ambiguidade,
     a ferramenta devolve a lista de candidatos para você pedir mais detalhes ao cliente.
     """
-    with _conn() as c:
+    with closing(_conn()) as c:
         if nome_ou_id.strip().isdigit():
             rows = c.execute("SELECT * FROM v_produto WHERE product_id = ?",
                              [int(nome_ou_id)]).fetchall()
@@ -336,7 +339,7 @@ def status_pedido(order_id: int, identificador: str) -> str:
     Retorna status, itens, valor, forma de pagamento, previsão de entrega, código de
     rastreio e há quantos dias o pedido foi feito (para aplicar prazos de troca/devolução).
     """
-    with _conn() as c:
+    with closing(_conn()) as c:
         o = c.execute("SELECT * FROM orders WHERE order_id = ?", [order_id]).fetchone()
         if not o:
             return f"Não encontrei nenhum pedido com o número {order_id}."
