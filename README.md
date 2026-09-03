@@ -263,13 +263,19 @@ do nome cadastrado**, com match de **palavra inteira** e **sem nenhuma palavra q
 do nome**. Rejeita: um nome só ("Ana"), um sobrenome só ("Santos"), pedaço de palavra
 ("ana" ⊂ "Mariana"), nome repetido ("Ana Ana"), e "spray" de nomes comuns.
 
-Esta é a segunda versão. A primeira (match de substring, um token) e uma correção intermediária
-(≥2 tokens, mas ignorando palavras inválidas e sem deduplicar) eram burláveis: `order_id`
-sequencial + só saber o primeiro nome = 100% de acesso, ou uma string única de nomes comuns =
-70% às cegas. As duas falhas viraram teste (`test_identidade_nao_burlavel`: 50 clientes ×
-ataques de repetição/spray/sobrenome + casos legítimos). Ainda **não** é autenticação de
-verdade — produção pediria login, código por e-mail/WhatsApp e rate limit no `order_id` (nas
-limitações).
+Esta é a terceira versão. A primeira (match de substring, um token) e a segunda (≥2 tokens,
+mas ignorando palavras inválidas e sem deduplicar) eram burláveis: `order_id` sequencial + só
+saber o primeiro nome = 100% de acesso, ou uma string única de nomes comuns = 70% às cegas.
+As duas falhas viraram teste (`test_identidade_nao_burlavel`: 50 clientes × ataques de
+repetição/spray/sobrenome + casos legítimos, e um *bound* de colisões cruzadas).
+
+**Resíduo conhecido:** verificação por "pedaço do nome" tem um teto — o nome real de um
+cliente pode ser subconjunto do de outro (`"Bruno Carvalho"` ⊂ `"Bruno Carvalho Martins"`).
+São 3 pares assim nos 50 clientes; não é ataque cego (o atacante teria que *ser* o cliente de
+nome mais curto). Fechar isso exigiria pedir o nome completo exato (quebra "primeiro + último
+nome", que é como as pessoas se identificam) ou um identificador único — ou seja, autenticação
+de verdade, que está nas limitações (login, código por e-mail/WhatsApp, rate limit no
+`order_id`).
 
 ### 7. Histórico de conversa — checkpointer SQLite do LangGraph
 

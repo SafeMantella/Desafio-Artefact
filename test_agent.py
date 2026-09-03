@@ -127,6 +127,15 @@ def test_identidade_nao_burlavel():
         for oid in range(1, 21):
             assert "não posso liberar" in status_pedido.invoke({"order_id": oid, "identificador": sobren})
 
+    # resíduo conhecido e LIMITADO: nome real de um cliente pode ser subconjunto do de
+    # outro ("Bruno Carvalho" ⊂ "Bruno Carvalho Martins"). Não é ataque cego. O teste
+    # garante que não passa de um punhado — se disparar, algum bug de agregação voltou.
+    cruzadas = sum(
+        1 for a in clientes for b in clientes
+        if a[0] != b[0] and _identidade_confere(a[0], b[0], b[1])
+    )
+    assert cruzadas <= 3, f"colisões cruzadas subiram para {cruzadas} — regressão de agregação"
+
 
 def test_agente_compila():
     """O grafo monta, as 4 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
