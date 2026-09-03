@@ -70,8 +70,19 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 - [x] commit `readme completo`
 
 ## Parte 8 — Fechamento ✅
-- [x] histórico: 11 commits incrementais, sem force-push
+- [x] histórico: commits incrementais, sem force-push
 - [x] persona: assistente batizado de **melodIA** (decisão do Pedro) — registrado no README §9
 - [x] push; repo público confirmado
-- [x] `git clone` limpo → venv → `build_db.py` → `test_agent.py` 6/6 (partes offline)
+- [x] `git clone` limpo → venv → `build_db.py` → `test_agent.py` (partes offline)
 - [ ] opcional (Pedro): rodar `streamlit run app.py` num clone limpo com o LM Studio, e decidir se mantém `desafio_tecnico_ai_eng_artefact.pdf` no repo
+
+## Parte 9 — Correções pós-análise (@ANALISTA)
+
+- [x] **#4 segurança** (`98ff555`): `_identidade_confere` exige e-mail exato OU nome+sobrenome
+  (≥2 partes inteiras, match de palavra, não substring). Fechou o bypass por sobrenome comum +
+  `order_id` sequencial. `test_identidade_nao_burlavel` (50 clientes × 20 pedidos).
+- [x] **#1 grounding** (`c7d8061`): prompt manda afirmar só o que `consultar_politica` retornou;
+  "confirmo com a equipe" quando a política é omissa. Testado 3× no cenário do pedido 8 + isca.
+- [ ] **#2** eval harness repetível contra o LLM (`test_live.py`, ~12 casos) — adiado
+- [ ] **#3** meio-termo de embeddings documentado no README (decisão 3) — adiado
+- [ ] **#5** README: nomear a tensão latência × volume do cenário do desafio — adiado
