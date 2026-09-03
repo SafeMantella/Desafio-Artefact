@@ -103,3 +103,42 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
   Assert em `test_agent.py`; o caso do eval foi de 1/3 para 3/3 rodadas.
 - [x] **#3** (`e4b5593`): meio-termo de embeddings documentado na decisão 3 do README.
 - [x] **#5** (`6cfc5f7`): tensão modelo-local × volume nomeada na decisão 2 do README.
+
+## Parte 10 — Segunda rodada de análise (revisão do Opus)
+
+Revisão técnica das decisões do projeto. Cinco correções principais + menores; o que já tinha
+sido feito na Parte 9 foi verificado antes de mexer.
+
+- [x] **conexão sqlite vazando** (`2a7c5a6`): `with _conn() as c` faz commit/rollback mas **não
+  fecha** — cada chamada de tool vazava um handle num processo (Streamlit) que fica de pé por
+  horas. Agora `contextlib.closing` nas 3 queries.
+- [x] **`buscar_produtos`, 2 bugs** (`63b667a`):
+  (a) categoria não mapeada era descartada **em silêncio** — `categoria="saxofone"` devolvia os
+  20 instrumentos mais baratos (ukuleles). Categorias 6/7/8 entraram no vocabulário (o manual §1
+  diz que a loja trabalha com sopros e cordas orquestrais, só não há produtos) e categoria
+  desconhecida agora devolve a lista de categorias válidas;
+  (b) `preco_min`/`preco_max` filtravam `preco_tabela` e ignoravam promoção — "ukulele até
+  R$ 500" excluía o Ohana CK-20, que sai por R$ 439,20. Agora filtra e ordena por
+  `COALESCE(preco_promocional, preco_tabela)`.
+- [x] **relógio de arrependimento errado** (`d54567b`): `policies.md` §4.1 conta 7 dias **do
+  recebimento**; §4.2 conta 30 **da compra**. A tool só dá dias da compra e o prompt mandava
+  comparar os dois com ele. Agora a tool rotula "há N dias da compra" + declara que não há data
+  de recebimento, e o prompt manda perguntar ao cliente quando o prazo contar dali. Saíram do
+  prompt os prazos hard-coded e o horário de funcionamento (duplicavam `policies.md`, e o
+  horário dava atalho para não chamar `consultar_politica`).
+- [x] **histórico sem poda** (`5286302`): `create_react_agent` reenviava a conversa inteira a
+  cada turno; com retorno de política (~1.200 tokens) 10-15 turnos estouram a janela local — e o
+  eval não via, porque nenhum caso passava de 2 turnos. `pre_model_hook` + `trim_messages`
+  (`MAX_HISTORY_TOKENS`, default 8000); `start_on="human"` evita `ToolMessage` órfã.
+  `test_poda_historico` cobre sem LLM. Junto: `temperature` 0.3 → 0 e log (turno em INFO,
+  ferramenta em DEBUG, sem PII).
+- [x] **eval com n=1** (`73dee54`): rodava cada caso uma vez e reportava "16/16". Agora
+  `--rodadas N` (default 3), gate por taxa, latência medida e `eval_report.md` versionado.
+  16 → 20 casos: caso positivo de arrependimento (cliente informa quando recebeu), categoria sem
+  itens, faixa de preço com promoção, conversa longa (poda ponta a ponta).
+- [x] **enunciado fora do repo** (`2c92d7d`): `.gitignore` + `git rm --cached`. Fecha a pendência
+  aberta na Parte 8.
+- [ ] README com as decisões desta rodada + números reais do `eval_report.md`
+
+Pendência opcional (Pedro): validar o Streamlit ao vivo com uma conversa de 15+ turnos — é o
+cenário que a poda de histórico endereça e o único que o `test_agent.py` não cobre sozinho.

@@ -30,11 +30,11 @@ Entregáveis: repo público + `README.md` (setup + justificativas + limitações
 | 1 | Abordagem do agente | ReAct com **LangChain + LangGraph** (`langgraph.prebuilt.create_react_agent`) | Loop de raciocínio/tool pronto; LangChain é padrão de mercado. Fallback text-ReAct se o tool calling do modelo local for fraco. |
 | 2 | Políticas (PDF) | `pymupdf4llm` converte o PDF → `policies_raw.md`; curadoria leve → `policies.md`; tool `consultar_politica(topico)` retorna seção por palavra-chave | Doc tem ~4k tokens / 10 seções. RAG com vector DB é over-engineering nessa escala. |
 | 3 | Dados (CSVs) | ETL → **SQLite** (`emporio.db`) + views; SQL **parametrizado** nas tools (LLM não escreve SQL) | Mostra modelagem; joins/agregações limpos; sem risco de query gerada errada. |
-| 4 | Conceito de "hoje" | Config `DATA_REFERENCE_DATE` (default `2026-03-25`) | Dataset é snapshot; pedidos vão até 2026-03-22. Sem isso, toda política de prazo dá "vencido". |
-| 5 | Histórico de conversa | Checkpointer **`SqliteSaver`** do LangGraph, por `thread_id` | Persiste entre execuções, reaproveita o SQLite. Cliente volta e o agente lembra. |
+| 4 | Conceito de "hoje" | Config `DATA_REFERENCE_DATE` (default `2026-03-25`) | Dataset é snapshot; pedidos vão até 2026-03-22. Sem isso, toda política de prazo dá "vencido". **Parte 10:** §4.1 conta do *recebimento*, não da compra — a tool declara que não tem essa data e o agente pergunta ao cliente. |
+| 5 | Histórico de conversa | Checkpointer **`SqliteSaver`** do LangGraph, por `thread_id` + poda com `trim_messages` no `pre_model_hook` | Persiste entre execuções, reaproveita o SQLite. Persistir tudo ≠ reenviar tudo: `MAX_HISTORY_TOKENS` (8000) evita estourar a janela do modelo local em conversa longa. |
 | 6 | Identificação do cliente | `status_pedido`: e-mail exato OU (primeiro nome + ≥2 partes distintas do nome, match de palavra inteira, sem palavra fora do nome). `_identidade_confere` em `tools.py`; `test_identidade_nao_burlavel` | LGPD sem auth. v1 (substring) e v2 (agregação) eram burláveis 100%/70% às cegas — v3 fecha isso. Resíduo conhecido: 3 pares de clientes com nome-subconjunto colidem (não é ataque cego); documentado no README §6. |
 | 7 | Interface | **Streamlit** | Chat web pra demo; `thread_id` em `st.session_state`. |
-| 8 | Modelo / provedor | **LM Studio** local; código agnóstico (base_url + nome via `.env`), default `qwen/qwen3.5-9b` | Sem custo, offline, PII não sai da máquina. `test_live.py` 13/13 com qwen3.5-9b. |
+| 8 | Modelo / provedor | **LM Studio** local; código agnóstico (base_url + nome via `.env`) | Sem custo, offline, PII não sai da máquina. `temperature=0` (Parte 10) para o eval medir o modelo, não o sampler. Números da última rodada: `eval_report.md`. |
 
 **Defaults assumidos** (documentados no README):
 - Idioma: **PT-BR apenas**.
@@ -60,7 +60,8 @@ prompts.py         system prompt / persona / regras                         [Par
 agent.py           monta o ReAct agent + checkpointer                       [Parte 4]
 app.py             Streamlit                                                [Parte 5]
 test_agent.py      7 checks assert-based, sem LLM (views, política, tools, identidade)  [ao longo]
-test_live.py       13 casos ponta a ponta contra o LM Studio (avaliação do agente)     [Parte 9]
+test_live.py       avaliação ponta a ponta contra o LM Studio, k rodadas por caso      [Parte 9-10]
+eval_report.md     saída da última execução do eval (taxa + latência por caso)      [Parte 10]
 examples/          3-5 conversas de exemplo                                 [Parte 6]
 data/              dados fornecidos — NÃO alterar
 ```
@@ -76,15 +77,20 @@ data/              dados fornecidos — NÃO alterar
 
 ## 5. Estado atual
 
-**Completo + rodada de correções pós-análise do @ANALISTA.** Ver `CHECKLIST.md` (Parte 9).
+**Completo + duas rodadas de correções pós-análise.** Ver `CHECKLIST.md` (Partes 9 e 10).
 Partes 0-8: ETL, políticas, 4 tools, agente (melodIA), Streamlit, 5 exemplos, README, clone
 limpo. `test_agent.py`: 7/7. `test_live.py`: 16/16 (última execução). Correções: #4 identidade
 (v3 + resíduo documentado), #1 grounding (mitigado), #3/#5 (README), #2 (eval harness),
 #2b eval endurecido (16 casos, oráculo de PII derivado, whitelist no lugar de blacklist) —
 que achou e fechou o bug do `buscar_produtos` ("existe sem estoque" virava "não existe").
 
-Pendências opcionais (Pedro): validar o Streamlit ao vivo num clone limpo; decidir se mantém
-o PDF do enunciado no repo.
+**Parte 10** (revisão do Opus sobre as decisões): conexão sqlite vazando (`closing`);
+`buscar_produtos` descartava categoria desconhecida em silêncio e ignorava promoção na faixa de
+preço; relógio de arrependimento contava da compra e não do recebimento; histórico sem poda
+(`pre_model_hook` + `trim_messages`); eval rodava n=1 (agora `--rodadas`, default 3, com
+`eval_report.md` versionado); enunciado saiu do versionamento.
+
+Pendência opcional (Pedro): validar o Streamlit ao vivo com conversa de 15+ turnos.
 
 ## 6. Armadilhas dos dados (descobertas na exploração)
 
