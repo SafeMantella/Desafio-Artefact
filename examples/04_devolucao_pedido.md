@@ -1,16 +1,14 @@
 # NÃO TRIVIAL: devolução aplicando política + dados do pedido
 
+
 _Modelo: qwen/qwen3.5-9b. Gerado por `run_examples.py`._
+
 
 **Cliente:** Me arrependi de uma compra que fiz, o pedido 8. Consigo devolver?
 
-**Assistente:** Olá! Tudo bem?
+**Assistente:** Olá! Entendo sua situação. Para verificar se há direito à devolução do seu pedido 8, preciso confirmar a identidade do cliente para proteger seus dados.
 
-Para eu verificar se o seu pedido 8 está dentro do prazo para devolução, preciso confirmar a sua identidade por questões de segurança (LGPD). 
-
-Poderia me passar o **nome completo** ou o **e-mail** que usou ao fazer esse pedido?
-
-Assim que tiver, verifico o status e te digo se ainda está dentro do prazo para devolução! 🎸
+Você poderia me informar o **nome completo** ou o **e-mail** que usou ao fazer esse pedido? Assim consigo consultar o status e te explicar sobre as regras de devolução.
 
 **Cliente:** É a Ana Carolina Ferreira
 
@@ -26,7 +24,7 @@ Assim que tiver, verifico o status e te digo se ainda está dentro do prazo para
 > Previsão de entrega: 28/02/2026
 > Código de rastreio: BRJL5544332BR
 
-> 🔧 chama `consultar_politica(topico='trocas devoluções')`
+> 🔧 chama `consultar_politica(topico='trocas e devoluções')`
 
 > 🔧 `consultar_politica` →
 >
@@ -45,25 +43,21 @@ Assim que tiver, verifico o status e te digo se ainda está dentro do prazo para
 > - Após 30 dias: acionar a garantia diretamente com o fabricante. A loja pode intermediar mediante solicitação.
 > - Não cobre danos por mau uso, quedas, umidade excessiva ou modificações não autorizadas.
 > 
-> ### […]
+> ### 4.3 Trocas por preferência
+> - Preferência (cor, modelo, tamanho): permitidas em até **7 dias**, mediante disponibilidade do produto desejado.
+> - Produto em perfeito estado e na embalagem original.
+> - Di […]
 
-**Assistente:** Oi, Ana Carolina! Tudo bem?
+**Assistente:** Olá, Ana Carolina! Tudo bem?
 
-Entendi que você se arrependeu da compra do pedido 8 (Kala KA-C Concert Mogno). Vou te explicar como funciona a política de devolução da nossa loja:
+Acompanhei o status do seu pedido 8 (Kala KA-C Concert Mogno) e ele está atualmente **"enviado, a caminho"**, com previsão de entrega para 28/02/2026.
 
-**Para devolução por arrependimento:**
-- Você tem **7 dias corridos a partir do RECEBIMENTO** do produto (não da data do pedido).
-- O produto precisa estar na embalagem original, sem uso, com todos os acessórios.
-- O reembolso é feito no mesmo cartão de débito usado na compra.
+Sobre a devolução: **ainda não é possível** solicitar o reembolso agora. O direito de arrependimento (7 dias) só começa a contar **após o recebimento** do produto. Como a entrega ainda não foi confirmada, o prazo não começou.
 
-**Sobre o seu pedido:**
-- O pedido foi feito em 15/02/2026 e a previsão de entrega era 28/02/2026.
-- O status atual é "enviado, a caminho" — ou seja, o produto ainda não foi entregue para você.
+**O que fazer:**
+1. Aguarde a confirmação de entrega (o status deve mudar para "entregue").
+2. Assim que receber, você tem **7 dias corridos** para solicitar a devolução, desde que o produto esteja na embalagem original, sem uso e com todos os acessórios.
 
-**Importante:** Como o produto ainda está em trânsito, os 7 dias para arrependimento **ainda não começaram a contar**. Assim que você receber a guitarra, você terá 7 dias para decidir se quer manter ou devolver.
+Se o produto chegar com defeito, o prazo seria de 30 dias para troca. Mas como ainda não foi recebido, o ideal é aguardar a confirmação de entrega primeiro.
 
-**Mas atenção:** A previsão de entrega (28/02) já passou (hoje é 25/03). Se o produto não chegar em breve, você pode ter direito a um reembolso ou cancelamento do pedido por atraso na entrega. 
-
-Quer que eu acompanhe o rastreio do pedido (código: BRJL5544332BR) para ver se há algum atraso? Posso verificar a situação atual do envio! 🎸
-
-Sua música começa aqui! 😊
+Posso te ajudar com mais alguma coisa sobre o pedido ou sobre o produto? Sua música começa aqui! 🎸

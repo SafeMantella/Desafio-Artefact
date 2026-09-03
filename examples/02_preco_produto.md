@@ -1,6 +1,8 @@
 # Consulta de preço de um produto específico
 
+
 _Modelo: qwen/qwen3.5-9b. Gerado por `run_examples.py`._
+
 
 **Cliente:** Quanto custa o Takamine GD20?
 
@@ -12,27 +14,26 @@ _Modelo: qwen/qwen3.5-9b. Gerado por `run_examples.py`._
 > Situação no catálogo: à venda
 > Disponibilidade: em estoque
 > Preço de tabela: R$ 2.199,00
-> À vista no PIX: R$ 2.089,05  (5% de desconto sobre a tabela)
+> Promoção ativa: nenhuma
+> À vista no PIX: R$ 2.089,05  (desconto fixo de 5% do PIX, não é promoção)
 > Especificações: top: Cedro Sólido, back_sides: Sapele, neck: Mogno, strings: steel, scale: 650mm, electronics: no, color: Natural
 > 
 > Violão dreadnought Takamine com tampo sólido em cedro. Excelente para fingerstyle com timbre quente e definido.
 
-**Assistente:** Olá! O **Takamine GD20 Dreadnought Natural** está disponível em estoque! 🎸
+**Assistente:** Olá! O **Takamine GD20 Dreadnought Natural** está disponível em estoque na nossa loja.
 
-Aqui estão os preços:
+Aqui estão os valores:
 - **Preço de tabela:** R$ 2.199,00
-- **À vista no PIX:** R$ 2.089,05 (com 5% de desconto!)
+- **À vista no PIX:** R$ 2.089,05 (desconto fixo de 5% do PIX, que é permanente!)
 
-É um violão dreadnought com tampo sólido em cedro, perfeito para fingerstyle com um timbre quente e definido. Topo de linha!
+Não há promoção ativa no momento, mas o PIX já te dá essa vantagem. É um violão dreadnought com tampo sólido em cedro, perfeito para fingerstyle com um timbre quente e definido.
 
-Tem interesse em saber mais detalhes ou que tal ver outras opções? Sua música começa aqui! 🎶
+Sua música começa aqui! 🎸
 
 **Cliente:** E se eu pagar no pix?
 
-**Assistente:** Ótima escolha! O pagamento no PIX é bem vantajoso.
+**Assistente:** Ótima escolha! O pagamento no PIX para o **Takamine GD20** sai por **R$ 2.089,05**.
 
-Para o **Takamine GD20**, o valor à vista no PIX é **R$ 2.089,05** (5% de desconto sobre o preço de tabela de R$ 2.199,00).
+É um desconto fixo de 5% do preço de tabela (R$ 2.199,00), que é uma condição permanente da loja — vale sempre que você pagar à vista no PIX!
 
-É uma boa economia, né? 😄
-
-Quer que eu te ajude com algo mais, como formas de parcelamento ou outras opções de violão? Sua música começa aqui! 🎸
+Sua música começa aqui! 🎸
