@@ -204,9 +204,14 @@ def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float | Non
         return ("Não encontrei nenhum instrumento com esses critérios. "
                 "Talvez ajustando a faixa de preço ou a categoria.")
 
-    cabecalho = f"{len(rows)} instrumento(s) encontrado(s):" if len(rows) <= 20 else \
-        f"{len(rows)} instrumentos — mostrando os 20 mais baratos:"
-    return cabecalho + "\n" + "\n".join(f"- {_linha_produto(r)}" for r in rows[:20])
+    # lista PRIMEIRO; nota de truncamento por último (senão o modelo comenta a
+    # paginação e esquece de repassar os itens).
+    corpo = "\n".join(f"- {_linha_produto(r)}" for r in rows[:20])
+    if len(rows) <= 20:
+        return f"{len(rows)} instrumento(s). Liste estes itens na resposta ao cliente:\n{corpo}"
+    return (f"Liste estes 20 itens na resposta ao cliente:\n{corpo}\n\n"
+            f"(são os 20 mais baratos de {len(rows)} disponíveis; para ver outros, "
+            f"filtre por categoria ou faixa de preço)")
 
 
 @tool
