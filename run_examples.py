@@ -36,16 +36,18 @@ EXEMPLOS = [
 
 def _rotulo(m) -> str:
     if isinstance(m, HumanMessage):
-        return f"**Cliente:** {m.content}"
+        return f"**Cliente:** {m.content.strip()}"
     if isinstance(m, ToolMessage):
-        corpo = m.content if len(m.content) < 800 else m.content[:800] + " […]"
-        return f"> 🔧 `{m.name}` →\n>\n> " + corpo.replace("\n", "\n> ")
+        corpo = m.content if len(m.content) <= 1000 else m.content[:1000] + " […]"
+        return f"> 🔧 `{m.name}` →\n>\n> " + corpo.strip().replace("\n", "\n> ")
     if isinstance(m, AIMessage):
-        linhas = []
-        for tc in m.tool_calls or []:
-            linhas.append(f"> 🔧 chama `{tc['name']}({', '.join(f'{k}={v!r}' for k, v in tc['args'].items())})`")
-        if m.content:
-            linhas.append(f"**Assistente:** {m.content}")
+        linhas = [
+            f"> 🔧 chama `{tc['name']}({', '.join(f'{k}={v!r}' for k, v in tc['args'].items())})`"
+            for tc in (m.tool_calls or [])
+        ]
+        conteudo = (m.content or "").strip()
+        if conteudo:
+            linhas.append(f"**Assistente:** {conteudo}")
         return "\n\n".join(linhas)
     return ""
 
