@@ -70,12 +70,18 @@ Variáveis de ambiente (`.env`):
 ### Testes
 
 ```bash
-python test_agent.py              # 6 checks, sem depender do LLM
+python test_agent.py    # 7 checks determinísticos, sem LLM — rápido
+python test_live.py     # 13 casos ponta a ponta contra o LM Studio — lento (~15 min)
 ```
 
-Cobrem a lógica não-trivial: views do ETL (preço promocional, PIX não-cumulativo,
-disponibilidade), roteamento do `consultar_politica`, as três tools de dados (incluindo a
-verificação de identidade) e a montagem do grafo do agente.
+- **`test_agent.py`** cobre a lógica não-trivial sem chamar o modelo: views do ETL (preço
+  promocional, PIX não-cumulativo, disponibilidade), roteamento do `consultar_politica`, as
+  três tools de dados (incl. os ataques à verificação de identidade) e a montagem do grafo.
+- **`test_live.py`** é a avaliação do agente: cada caso declara as mensagens do cliente, a
+  ferramenta que devia ser chamada e o que a resposta final deve / não deve conter (preço
+  certo, sem promoção inventada, sem PII vazada em recusa de identidade, sem política
+  inventada, recusa de fora-de-escopo, etc.). Depende do LLM, então um caso pode oscilar entre
+  execuções — é o custo de avaliar um modelo local não determinístico.
 
 ---
 
@@ -136,7 +142,7 @@ de política devolve a(s) seção(ões) relevante(s) do manual em markdown.
 | **pymupdf4llm** (+ `pymupdf`) | PDF de políticas → markdown | conversão reproduzível e versionada; usado só no `convert_policies.py`, em *build-time* (§3) |
 | **Streamlit** | interface de chat | chat web em poucas linhas; `thread_id` editável para demonstrar a persistência (§8) |
 | **python-dotenv** | configuração via `.env` | tira `MODEL` / `base_url` / data de referência do código e do git — estilo 12-factor (§10) |
-| **`assert` + `__main__`** | testes (`test_agent.py`) | 6 checks sem framework, rodam em qualquer lugar, zero dependência de teste (§11) |
+| **`assert` + `__main__`** | testes (`test_agent.py` sem LLM, `test_live.py` contra o LM Studio) | sem framework, zero dependência de teste, rodam em qualquer lugar (§11) |
 
 O metapacote `langchain` está em `requirements.txt` como guarda-chuva de versões; o código
 importa os componentes (`langchain-core`, `langchain-openai`) e `langgraph` diretamente.
@@ -169,10 +175,9 @@ decoradas com `@tool` (`langchain-core`).
   modelos frontier. Mitigações: só 4 ferramentas, descrições ricas, `temperature=0.3`, e um
   system prompt curto e imperativo. O código é agnóstico ao modelo (`base_url` + `MODEL` no
   `.env`), então trocar por uma API é mudar duas variáveis.
-- **Recomendação:** Qwen3.5-9B (`qwen/qwen3.5-9b`) — foi o modelo do *smoke test* (6/6
-  cenários). A família Qwen2.5-Instruct 7B+ é uma alternativa mais leve. Modelos frontier via
-  API resolveriam a latência e a confiabilidade do *tool calling*, ao custo de mandar PII pra
-  fora.
+- **Recomendação:** Qwen3.5-9B (`qwen/qwen3.5-9b`) — passou o `test_live.py` (13/13 na última
+  rodada). A família Qwen2.5-Instruct 7B+ é uma alternativa mais leve. Modelos frontier via API
+  resolveriam a latência e a confiabilidade do *tool calling*, ao custo de mandar PII pra fora.
 - **A tensão que esta escolha assume:** o problema de negócio do enunciado é *volume* — "a
   equipe está sobrecarregada com perguntas recorrentes". Um modelo local a 10 s–2 min por
   turno, sem *streaming* nem fila, **demonstra** que a lógica do agente funciona, mas não
@@ -325,18 +330,25 @@ sem tocar em código.
 
 ### 11. Testes — `assert` + `__main__`, sem framework
 
-`test_agent.py` são 6 funções com `assert`, rodadas por um `main()` próprio. Cobrem a lógica
-não-trivial (views do ETL, roteamento de política, verificação de identidade, montagem do
-grafo) sem chamar o LLM. Para 6 checks, pytest seria uma dependência a mais sem ganho;
-`python test_agent.py` roda em qualquer lugar.
+Dois níveis, ambos com `assert` e um `main()` próprio, sem pytest:
+
+- **`test_agent.py`** (7 funções, sem LLM): a lógica determinística — views do ETL, roteamento
+  de política, as tools de dados, e os ataques à verificação de identidade (repetição, spray,
+  sobrenome, *bound* de colisão cruzada). Rápido, roda em qualquer lugar.
+- **`test_live.py`** (13 casos, contra o LM Studio): a avaliação do agente ponta a ponta —
+  cada caso declara os turnos do cliente, a ferramenta esperada e o que a resposta deve / não
+  deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é
+  o que trava regressão de comportamento quando o prompt muda.
+
+pytest seria uma dependência a mais sem ganho nessa escala.
 
 ---
 
 ## Limitações conhecidas
 
 - **Confiabilidade do *tool calling* depende do modelo local.** Um modelo fraco pode responder
-  preço/estoque sem chamar a ferramenta, ou vazar uma resposta fora de escopo. Com Qwen3.5-9B o
-  comportamento no smoke test foi bom (6/6 cenários), mas não é garantido a 100%.
+  preço/estoque sem chamar a ferramenta, ou vazar uma resposta fora de escopo. Com Qwen3.5-9B a
+  última rodada do `test_live.py` deu 13/13, mas não é garantido a 100% — daí o eval existir.
 - **Latência vs. o problema de volume.** Cada turno leva ~10 s a ~2 min (modelo local, sem
   *streaming*). Aceitável para demonstrar o agente, mas não ataca a sobrecarga da equipe que
   motivou o projeto — ver a "tensão que esta escolha assume" na decisão 2.
@@ -355,12 +367,12 @@ grafo) sem chamar o LLM. Para 6 checks, pytest seria uma dependência a mais sem
 
 ## Com mais tempo
 
-- **Camada de avaliação** (casos fixos rodados contra o LLM: pergunta → ferramenta esperada →
-  substring esperada/proibida) medindo escolha de ferramenta, guardrails e aplicação de
-  política. É o que fecharia o resíduo do grounding de forma repetível.
+- **Expandir a avaliação** (`test_live.py` já existe com 13 casos): mais cenários, um
+  LLM-as-judge para os julgamentos mais sutis (tom, completude), e rodar em CI com um modelo
+  servido pequeno em vez de depender do LM Studio local.
 - **Guard de saída** determinístico para grounding de política: se a resposta final citar um
   prazo/regra que não aparece literalmente no texto que a tool retornou naquele turno,
-  descartar e regenerar.
+  descartar e regenerar. Fecharia o resíduo que `test_live.py` hoje só detecta.
 - **Guard de entrada** determinístico para assuntos fora de escopo e para *prompt injection*.
 - **RAG semântico** no lugar da tabela de palavras-chave, se o corpo de políticas crescer.
 - **Autenticação real** para consulta de pedido (código por e-mail/WhatsApp).
@@ -410,9 +422,11 @@ tools.py             as 4 ferramentas (SQL parametrizado; política por palavra-
 prompts.py           system prompt — persona + regras
 agent.py             create_react_agent + checkpointer SQLite; REPL em __main__
 app.py               interface Streamlit
-test_agent.py        6 checks assert-based (não usam o LLM)
+run_examples.py      gera examples/*.md rodando o agente nos 5 cenários
+test_agent.py        7 checks assert-based, sem LLM
+test_live.py         13 casos de avaliação ponta a ponta contra o LM Studio
 CLAUDE.md            visão geral para retomar o projeto depois
 CHECKLIST.md         progresso por partes
 data/                dados fornecidos (não alterados)
-examples/            3-5 conversas de exemplo
+examples/            5 conversas de exemplo
 ```

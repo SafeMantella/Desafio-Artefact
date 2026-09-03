@@ -33,7 +33,7 @@ Entregáveis: repo público + `README.md` (setup + justificativas + limitações
 | 5 | Histórico de conversa | Checkpointer **`SqliteSaver`** do LangGraph, por `thread_id` | Persiste entre execuções, reaproveita o SQLite. Cliente volta e o agente lembra. |
 | 6 | Identificação do cliente | `status_pedido`: e-mail exato OU (primeiro nome + ≥2 partes distintas do nome, match de palavra inteira, sem palavra fora do nome). `_identidade_confere` em `tools.py`; `test_identidade_nao_burlavel` | LGPD sem auth. v1 (substring) e v2 (agregação) eram burláveis 100%/70% às cegas — v3 fecha isso. Resíduo conhecido: 3 pares de clientes com nome-subconjunto colidem (não é ataque cego); documentado no README §6. |
 | 7 | Interface | **Streamlit** | Chat web pra demo; `thread_id` em `st.session_state`. |
-| 8 | Modelo / provedor | **LM Studio** local; código agnóstico (base_url + nome via `.env`), default `qwen/qwen3.5-9b` | Sem custo, offline, PII não sai da máquina. Smoke test 6/6 com qwen3.5-9b. |
+| 8 | Modelo / provedor | **LM Studio** local; código agnóstico (base_url + nome via `.env`), default `qwen/qwen3.5-9b` | Sem custo, offline, PII não sai da máquina. `test_live.py` 13/13 com qwen3.5-9b. |
 
 **Defaults assumidos** (documentados no README):
 - Idioma: **PT-BR apenas**.
@@ -58,7 +58,8 @@ tools.py           as 4 tools LangChain (buscar_produtos, detalhe_produto,
 prompts.py         system prompt / persona / regras                         [Parte 4]
 agent.py           monta o ReAct agent + checkpointer                       [Parte 4]
 app.py             Streamlit                                                [Parte 5]
-test_agent.py      checks assert-based (sem framework)                       [ao longo]
+test_agent.py      7 checks assert-based, sem LLM (views, política, tools, identidade)  [ao longo]
+test_live.py       13 casos ponta a ponta contra o LM Studio (avaliação do agente)     [Parte 9]
 examples/          3-5 conversas de exemplo                                 [Parte 6]
 data/              dados fornecidos — NÃO alterar
 ```
@@ -74,9 +75,10 @@ data/              dados fornecidos — NÃO alterar
 
 ## 5. Estado atual
 
-**Completo.** Ver `CHECKLIST.md`. Partes 0-8 fechadas: ETL, políticas, 4 tools, agente,
-Streamlit, 5 exemplos, README, clone limpo verificado. `test_agent.py`: 6/6. Smoke test ao
-vivo passou 6/6 com `qwen/qwen3.5-9b`. 11 commits incrementais.
+**Completo + rodada de correções pós-análise do @ANALISTA.** Ver `CHECKLIST.md` (Parte 9).
+Partes 0-8: ETL, políticas, 4 tools, agente (melodIA), Streamlit, 5 exemplos, README, clone
+limpo. `test_agent.py`: 7/7. `test_live.py`: 13/13 (última execução). Correções: #4 identidade
+(v3 + resíduo documentado), #1 grounding (mitigado), #3/#5 (README), #2 (eval harness).
 
 Pendências opcionais (Pedro): validar o Streamlit ao vivo num clone limpo; decidir se mantém
 o PDF do enunciado no repo.

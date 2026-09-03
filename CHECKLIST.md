@@ -87,6 +87,9 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
   ANALISTA reproduziu resposta limpa E resíduo pro mesmo input → é **mitigação probabilística,
   não fix determinístico**. README §9 diz "mitigado, não eliminado"; fechar de vez = guard de
   saída ou eval (#2). Não reabrir por prompt.
-- [ ] **#2** eval harness repetível contra o LLM (`test_live.py`, ~12 casos) — adiado
-- [ ] **#3** meio-termo de embeddings documentado no README (decisão 3) — adiado
-- [ ] **#5** README: nomear a tensão latência × volume do cenário do desafio — adiado
+- [x] **#2 eval harness** (`<commit>`): `test_live.py` — 13 casos ponta a ponta contra o LM
+  Studio (ferramenta esperada + contém/não-contém na resposta). Cobre catálogo, preço, PIX
+  multi-turno, promoção falsa, políticas, devolução não-trivial, recusa de identidade sem
+  vazar PII, fora de escopo, não inventar marca, produto sem estoque. Última rodada: 13/13.
+- [x] **#3** (`e4b5593`): meio-termo de embeddings documentado na decisão 3 do README.
+- [x] **#5** (`6cfc5f7`): tensão modelo-local × volume nomeada na decisão 2 do README.
