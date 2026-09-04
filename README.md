@@ -37,8 +37,12 @@ pagamento, frete, garantia). Perguntas fora do escopo da loja são recusadas edu
 - *"Vocês têm saxofone?"* → a loja trabalha com sopros, mas o catálogo está sem itens da categoria — e o agente diz isso, em vez de listar outra coisa
 - *"Vocês vendem cordas de violão?"* → explica que a loja não trabalha com acessórios
 - *"Me passa uma receita de bolo?"* → recusa educadamente e volta ao contexto da loja
+- *"Vocês têm o violão Shelby SN-7C?"* → o item foi descontinuado; o agente avisa com transparência que saiu de linha e sugere alternativas equivalentes disponíveis (§7.3)
+- *"Fiz um setup personalizado no meu violão, posso trocar?"* → recusa a troca porque instrumentos com personalização ou ajustes sob encomenda são itens não elegíveis (§4.4)
+- *"Quero pagar R$ 500 no PIX e o resto no cartão em R$ 1.500"* → recusa a divisão porque combinação de formas só é permitida acima de R$ 2.000 (§3.1)
+- *"Moro em Campo Grande e minha compra deu R$ 500 redondo, o frete é grátis?"* → informa que paga taxa fixa de R$ 35,00, pois frete grátis é estritamente acima de R$ 500 (§5.1)
 
-Cinco conversas completas estão em [`examples/`](examples/), e a avaliação de ponta a ponta com 38
+Cinco conversas completas estão em [`examples/`](examples/), e a avaliação de ponta a ponta com 42
 cenários em [`test_live.py`](test_live.py) (com benchmark inicial de 33 casos em [`eval_report.md`](eval_report.md)).
 
 ---
@@ -95,7 +99,7 @@ Variáveis de ambiente (`.env`):
 
 ```bash
 python test_agent.py             # 13 checks determinísticos, sem LLM — segundos
-python test_live.py              # 38 casos × 3 rodadas contra o LM Studio — horas
+python test_live.py              # 42 casos × 3 rodadas contra o LM Studio — horas
 python test_live.py --rodadas 1  # 1 rodada só, para iterar
 python test_live.py identidade   # só os casos cujo nome contém "identidade"
 ```
@@ -383,8 +387,8 @@ Regra de política: vive só no texto, não no código nem no prompt.
 
 Dois níveis, ambos com `assert` e um `main()` próprio, sem pytest:
 
-- **`test_agent.py`** (13 funções, sem LLM): a lógica determinística — views do ETL e a correção de marca, roteamento das 10 seções de política, as tools de dados, a calculadora de frete (`calcular_frete`), a verificação de identidade contra os 20 pedidos, a aritmética de `simular_pagamento` (e a conferência das constantes contra o manual) e a poda de histórico. Inclui `test_policies_sem_perda`, que garante que a curadoria de `policies.md` mexeu em forma e não em conteúdo: todo número, valor e e-mail do `policies_raw.md` sobrevive no curado. Rápido, roda em qualquer lugar.
-- **`test_live.py`** (38 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta — cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é o que trava regressão de comportamento quando o prompt muda.
+- **`test_agent.py`** (13 funções, sem LLM): a lógica determinística — views do ETL e a correção de marca, roteamento das 10 seções de política (incluindo exceções da §4.4 como boquilhas e setup sob encomenda), as tools de dados, a calculadora de frete (`calcular_frete`), a verificação de identidade contra os 20 pedidos, a aritmética de `simular_pagamento` (e a conferência das constantes contra o manual) e a poda de histórico. Inclui `test_policies_sem_perda`, que garante que a curadoria de `policies.md` mexeu em forma e não em conteúdo: todo número, valor e e-mail do `policies_raw.md` sobrevive no curado. Rápido, roda em qualquer lugar.
+- **`test_live.py`** (42 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta — cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta deve / não deve conter. Cobre produtos descontinuados vs sem estoque (§7.3), itens não elegíveis para troca por personalização (§4.4), recusa de combinação de pagamento abaixo de R$ 2.000 (§3.1) e fronteira de frete grátis para Campo Grande em R$ 500 exato (§5.1). Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é o que trava regressão de comportamento quando o prompt muda.
 
 Evals: Cada execução escreve **[`eval_report.md`](eval_report.md)** com a taxa e a latência (mediana e pior caso) de cada caso. O arquivo é versionado de propósito: quem for avaliar o projeto vê o número sem precisar instalar o LM Studio e baixar o modelo.
 
