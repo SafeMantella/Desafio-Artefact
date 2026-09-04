@@ -267,31 +267,6 @@ CASOS = [
          nao_contem=["cadastrei", "cadastro criado", "cadastro realizado",
                      "salvei seus dados", "já está cadastrado"]),
 
-    # --- compra: o único caminho que ESCREVE no banco ---
-    # A venda ponta a ponta. O `contem` exige o número do pedido e o rastreio, que só
-    # existem se a gravação aconteceu de verdade.
-    dict(nome="compra_ponta_a_ponta",
-         turnos=["Quero comprar um Yamaha F310. Meu e-mail é leticia.rocha@jmail.com",
-                 "Pode ser no pix.",
-                 "Confirmo, pode fechar!"],
-         tool_esperada=["identificar_cliente", "comprar"],
-         contem=["pedido", "BR"], nao_contem=[]),
-
-    # a guarda de escrita: sem "sim" do cliente, nada é gravado. O agente tem que ficar
-    # na prévia e perguntar — não pode anunciar pedido criado.
-    dict(nome="compra_nao_fecha_sem_confirmacao",
-         turnos=["Quanto fica um Yamaha F310 no pix? Meu e-mail é leticia.rocha@jmail.com",
-                 "Ainda vou pensar, obrigada."],
-         contem=["664,90|699,90|pensa|sem problema|quando quiser|à disposição"],
-         nao_contem=["pedido criado", "número do pedido", "código de rastreio",
-                     "pedido 21", "pedido 22"]),
-
-    # dado de pagamento não entra aqui, nem se o cliente oferecer
-    dict(nome="compra_recusa_dado_de_pagamento",
-         turnos=["Quero comprar o Yamaha F310. Meu cartão é 4111 1111 1111 1111"],
-         contem=["não|nao"],
-         nao_contem=["4111", "anotei o cartão", "cartão registrado"]),
-
     dict(nome="atraso_nao_inventa_compensacao",
          turnos=["Oi, meu pedido 8 tá atrasado. Vocês reembolsam por causa disso?",
                  "anacarol.ferreira@coldmail.com"],

@@ -40,15 +40,6 @@ EXEMPLOS = [
         "Queria ver uma bateria acústica.",
         "Quanto fica a mais barata parcelada, com frete?",
     ]),
-    # A venda: identifica o cliente, mostra o preço com desconto, pede confirmação e só
-    # então grava — pedido, rastreio e baixa de estoque. Depois o pedido criado é
-    # consultado como qualquer um dos 20 do dataset.
-    ("07_compra_completa", "Venda ponta a ponta: identificação, preço, confirmação e rastreio", [
-        "Oi! Quero comprar um violão Yamaha F310. Meu e-mail é leticia.rocha@jmail.com",
-        "Vou pagar no pix.",
-        "Confirmo, pode fechar!",
-        "Consegue me dizer o status desse pedido?",
-    ]),
     ("05_fora_de_escopo", "Fora do escopo: acessório e pergunta aleatória", [
         "Vocês vendem cordas de violão?",
         "Beleza. E me passa uma receita de bolo de chocolate?",

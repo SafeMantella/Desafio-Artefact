@@ -1,26 +1,15 @@
 """Checks assert-based, sem framework. Rode:  python test_agent.py
 
-Roda contra um banco TEMPORÁRIO, construído dos CSVs a cada execução. Desde que o agente
-escreve (compras baixam estoque e criam pedidos), asserts como "20 pedidos" ou "61
-disponíveis" não podem depender do banco da demo. EMPORIO_DB precisa estar no ambiente
-ANTES de importar config/tools, porque config lê a variável no import.
-
 Cobre a lógica não-trivial: views do ETL, retrieval de política e as tools de dados
 (incluindo a verificação leve de identidade). Não exercita o LLM.
 """
-import os
 import re
 import sqlite3
-import tempfile
-from pathlib import Path
 import unicodedata
 from datetime import date
 
-os.environ.setdefault("EMPORIO_DB", str(Path(tempfile.gettempdir()) / "emporio_test.db"))
-
-from config import DATA_REFERENCE_DATE, DB_PATH, POLICIES_PATH, ROOT  # noqa: E402
-from tools import (buscar_produtos, cancelar_pedido, comprar, consultar_politica,  # noqa: E402
-                   detalhe_produto, status_pedido)
+from config import DATA_REFERENCE_DATE, DB_PATH, POLICIES_PATH, ROOT
+from tools import buscar_produtos, consultar_politica, detalhe_produto, status_pedido
 
 
 def test_etl_views():
@@ -311,116 +300,6 @@ def test_simular_pagamento():
     assert "R$ 323,10" in promo and "R$ 306,94" not in promo, promo
 
 
-def test_ciclo_de_compra():
-    """Venda ponta a ponta: prévia -> confirmação -> pedido rastreável -> cancelamento.
-
-    É o único caminho que ESCREVE no banco, então o teste cobre as duas coisas: que a
-    venda acontece por inteiro, e que ela NÃO acontece sem passar pela confirmação.
-    """
-    conn = sqlite3.connect(DB_PATH)
-    estoque = lambda pid: conn.execute(
-        "SELECT stock_quantity FROM products WHERE product_id=?", [pid]).fetchone()[0]
-    n_pedidos = lambda: conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
-    F310, EMAIL = 87, "leticia.rocha@jmail.com"
-    estoque0, pedidos0 = estoque(F310), n_pedidos()
-
-    cmp = lambda **kw: comprar.invoke({"produto": "Yamaha F310", "quantidade": 2,
-                                       "email": EMAIL, "forma_de_pagamento": "pix", **kw})
-
-    # dado de pagamento nunca entra: nem cartão, nem chave, nem CPF
-    assert "não me passe" in cmp(forma_de_pagamento="cartao 4111 1111 1111 1111")
-    # guardas de negócio
-    assert "Estoque insuficiente" in cmp(quantidade=9999) or "fora do permitido" in cmp(quantidade=9999)
-    assert "não pode ser vendido" in cmp(produto="113")            # discontinued
-    assert "não confere" in cmp(codigo_de_confirmacao="DEADBEEF")  # código inventado
-    assert (estoque(F310), n_pedidos()) == (estoque0, pedidos0), "algo gravou sem confirmar"
-
-    # forma de pagamento: parser, não lista de frases. A §3.1 permite QUALQUER parcelamento
-    # até 12x — a primeira versão só aceitava 3x/6x/12x (os valores do dataset) e recusava
-    # 5x, que é legítimo. Quem recusa é a parcela mínima da faixa, não a lista.
-    from tools import _forma_de_pagamento as fp
-    assert fp("crédito em 5x") == fp("cartão 5x") == fp("parcelado em 5 vezes") == "credit_5x"
-    assert fp("cartão de débito") == "debit" and fp("pix") == "pix"
-    assert fp("em 13x") is None and fp("dinheiro vivo") is None   # acima do teto da §3.1
-    assert "PRÉVIA" in cmp(forma_de_pagamento="crédito em 5x")     # 1399,80/5 = 279,96 >= 80
-    # parcela abaixo do mínimo é recusada com o teto REAL, não com um 'não'
-    baixo = comprar.invoke({"produto": "Kala KA-15S", "quantidade": 1, "email": EMAIL,
-                            "forma_de_pagamento": "12x"})
-    assert "o máximo é 3x" in baixo, baixo
-
-    # prévia: mostra o preço, COMPARA as formas e NÃO grava
-    previa = cmp()
-    assert "PRÉVIA" in previa and "R$ 1.329,81" in previa, previa   # 2x699,90 -5% PIX
-    # o cliente não escolhe a forma de pagamento no escuro: a prévia traz a alternativa
-    assert "Outras formas" in previa and "12x sem juros" in previa, previa
-    assert (estoque(F310), n_pedidos()) == (estoque0, pedidos0), "a prévia gravou"
-    codigo = re.search(r"codigo_de_confirmacao='([A-Z0-9]+)'", previa).group(1)
-
-    # confirmação: grava tudo numa vez só
-    ok = cmp(codigo_de_confirmacao=codigo)
-    pedido = int(re.search(r"Número do pedido: (\d+)", ok).group(1))
-    assert estoque(F310) == estoque0 - 2, "estoque não baixou pela quantidade exata"
-    assert n_pedidos() == pedidos0 + 1
-    rastreio = re.search(r"rastreio: (\S+)", ok).group(1)
-    assert re.fullmatch(r"BR[A-Z0-9]{9}BR", rastreio), f"formato §5.3 quebrado: {rastreio}"
-
-    # o pedido novo se comporta como os 20 do dataset
-    achado = status_pedido.invoke({"order_id": pedido, "identificador": EMAIL})
-    assert f"Pedido {pedido}" in achado and rastreio in achado and "1.329,81" in achado
-    assert "não posso liberar" in status_pedido.invoke(
-        {"order_id": pedido, "identificador": "outro@email.com"})
-
-    # cliente conhecido não vira cadastro duplicado
-    assert conn.execute("SELECT COUNT(*) FROM customers WHERE LOWER(email)=?",
-                        [EMAIL]).fetchone()[0] == 1
-
-    # cliente novo: a tool diz exatamente o que falta, e só cadastra na compra confirmada
-    novo = dict(produto="Yamaha C40", quantidade=1, email="zezinho@exemplo.com",
-                forma_de_pagamento="boleto")
-    faltam = comprar.invoke(novo)
-    assert "nome completo" in faltam and "telefone" in faltam and "cidade" in faltam
-    novo |= dict(nome="Zezinho da Silva", telefone="(67) 99999-0000", cidade="Dourados")
-    prev2 = comprar.invoke(novo)
-    assert "PRÉVIA" in prev2
-    assert conn.execute("SELECT COUNT(*) FROM customers WHERE email=?",
-                        ["zezinho@exemplo.com"]).fetchone()[0] == 0, "prévia criou cadastro"
-    comprar.invoke(novo | {"codigo_de_confirmacao":
-                           re.search(r"codigo_de_confirmacao='([A-Z0-9]+)'", prev2).group(1)})
-    assert conn.execute("SELECT COUNT(*) FROM customers WHERE email=?",
-                        ["zezinho@exemplo.com"]).fetchone()[0] == 1
-
-    # cancelamento devolve o estoque ao valor de antes da compra
-    assert "não confere" in cancelar_pedido.invoke(
-        {"order_id": pedido, "email": "outro@email.com"})
-    assert "cancelado" in cancelar_pedido.invoke(
-        {"order_id": pedido, "email": EMAIL, "motivo": "desistiu"})
-    assert estoque(F310) == estoque0, "cancelar não devolveu o estoque"
-    assert "já está cancelado" in cancelar_pedido.invoke({"order_id": pedido, "email": EMAIL})
-    # pedido entregue não é cancelamento, é devolução — e o prazo conta do recebimento
-    r = cancelar_pedido.invoke({"order_id": 1, "email": "pedro.oliveira@jmail.com"})
-    assert "devolução" in r and "recebeu" in r, r
-
-    # o build preserva o que o agente criou e é IDEMPOTENTE. O estoque é recomputado a
-    # partir dos pedidos vivos: descontar de novo um pedido CANCELADO encolhia o estoque
-    # a cada build (bug real, visto aqui).
-    import build_db
-    conn.close()
-    build_db.main()
-    conn = sqlite3.connect(DB_PATH)
-    assert n_pedidos() == pedidos0 + 2, "o build não preservou os pedidos criados"
-    assert estoque(F310) == estoque0, "build descontou pedido cancelado"
-    depois = (n_pedidos(), estoque(F310))
-    conn.close()
-    build_db.main()
-    conn = sqlite3.connect(DB_PATH)
-    assert (n_pedidos(), estoque(F310)) == depois, "dois builds seguidos divergiram"
-
-    build_db.main(reset=True)
-    conn = sqlite3.connect(DB_PATH)
-    assert n_pedidos() == pedidos0 and estoque(F310) == estoque0, "--reset não limpou"
-    conn.close()
-
-
 def test_poda_historico():
     """Conversa longa não pode estourar a janela nem deixar ToolMessage órfã (a API recusa)."""
     from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -445,29 +324,22 @@ def test_poda_historico():
 
 
 def test_agente_compila():
-    """O grafo monta, as 8 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
+    """O grafo monta, as 6 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
     from agent import build_agent
     from tools import TOOLS
     a = build_agent()
     assert a.__class__.__name__ == "CompiledStateGraph"
-    assert len(TOOLS) == 8
+    assert len(TOOLS) == 6
 
 
 TESTS = [test_etl_views, test_policies_sem_perda, test_consultar_politica,
          test_buscar_produtos, test_total_do_pedido_diverge_da_soma,
          test_detalhe_produto, test_status_pedido, test_identidade_nao_burlavel,
          test_simular_pagamento, test_identificar_cliente,
-         test_ciclo_de_compra, test_poda_historico, test_agente_compila]
+         test_poda_historico, test_agente_compila]
 
 
 def main():
-    # banco limpo dos CSVs a cada execução: os testes de compra escrevem, e o resto
-    # afirma contagens que só valem no estado canônico.
-    import build_db
-    Path(DB_PATH).unlink(missing_ok=True)
-    build_db.main(reset=True)
-    print(f"(banco de teste: {DB_PATH})\n")
-
     # Os asserts de prazo ("há 79 dias") são calibrados nesta data. Sem esta guarda,
     # um .env com outra data faz o teste falhar com cara de bug de código.
     assert DATA_REFERENCE_DATE == date(2026, 3, 25), (

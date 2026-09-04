@@ -38,7 +38,7 @@ pagamento, frete, garantia). Perguntas fora do escopo da loja são recusadas edu
 - *"Vocês vendem cordas de violão?"* → explica que a loja não trabalha com acessórios
 - *"Me passa uma receita de bolo?"* → recusa educadamente e volta ao contexto da loja
 
-Cinco conversas completas estão em [`examples/`](examples/), e a avaliação automática de 36
+Cinco conversas completas estão em [`examples/`](examples/), e a avaliação automática de 33
 cenários (3 rodadas cada) em [`eval_report.md`](eval_report.md).
 
 ---
@@ -67,7 +67,6 @@ pip install -r requirements.txt
 
 # 2. Banco local a partir dos CSVs
 python build_db.py                 # gera emporio.db
-python build_db.py --reset         # volta ao estado dos CSVs (descarta vendas da demo)
 
 # 3. Configuração
 cp .env.example .env               # ajuste MODEL para o id exato carregado no LM Studio
@@ -95,8 +94,8 @@ Variáveis de ambiente (`.env`):
 ### Testes
 
 ```bash
-python test_agent.py             # 13 checks determinísticos, sem LLM — segundos
-python test_live.py              # 36 casos × 3 rodadas contra o LM Studio — horas
+python test_agent.py             # 12 checks determinísticos, sem LLM — segundos
+python test_live.py              # 33 casos × 3 rodadas contra o LM Studio — horas
 python test_live.py --rodadas 1  # 1 rodada só, para iterar
 python test_live.py identidade   # só os casos cujo nome contém "identidade"
 ```
@@ -152,8 +151,6 @@ de política devolve as seções relevantes do manual em markdown.
 | `detalhe_produto(nome_ou_id)` | preço/specs/promoção de **um** instrumento | ficha completa; desambigua se o nome casar vários |
 | `status_pedido(order_id, identificador)` | andamento de um pedido | status, itens, valor, previsão, rastreio, dias **desde a compra** (e o aviso de que não há data de recebimento) — **só após conferir identidade** |
 | `consultar_politica(topico)` | horário, endereço, pagamento, troca/devolução, frete, garantia, LGPD, escopo | seção(ões) do `policies.md` |
-| `comprar(produto, quantidade, email, forma_de_pagamento, …)` | **fechar uma venda**, em dois passos: prévia com o preço final, e gravação só com o código de confirmação | resumo + código; na confirmação, número do pedido, rastreio, previsão e baixa de estoque |
-| `cancelar_pedido(order_id, email, motivo)` | cancelar um pedido e devolver as unidades ao estoque | confirmação, ou a orientação da §4.1 se o pedido já foi entregue |
 | `identificar_cliente(email)` | reconhecer o cliente na abertura (opcional) | primeiro nome, cidade e se há pedidos — **não** libera dado de pedido |
 | `simular_pagamento(valor, entrega_em_campo_grande)` | **conta** sobre um valor: quantas parcelas cabem, quanto fica cada uma, preço no PIX, frete metropolitano | simulação pronta; para fora de Campo Grande declara que o frete não é calculável e manda oferecer contato humano |
 
@@ -374,8 +371,8 @@ Regra de política: vive só no texto, não no código nem no prompt.
 
 Dois níveis, ambos com `assert` e um `main()` próprio, sem pytest:
 
-- **`test_agent.py`** (13 funções, sem LLM): a lógica determinística — views do ETL e a correção de marca, roteamento das 10 seções de política, as tools de dados, a verificação de identidade contra os 20 pedidos, a aritmética de `simular_pagamento` (e a conferência das constantes contra o manual) e a poda de histórico. Inclui `test_policies_sem_perda`, que garante que a curadoria de `policies.md` mexeu em forma e não em conteúdo: todo número, valor e e-mail do `policies_raw.md` sobrevive no curado. Rápido, roda em qualquer lugar.
-- **`test_live.py`** (36 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta — cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é o que trava regressão de comportamento quando o prompt muda.
+- **`test_agent.py`** (12 funções, sem LLM): a lógica determinística — views do ETL e a correção de marca, roteamento das 10 seções de política, as tools de dados, a verificação de identidade contra os 20 pedidos, a aritmética de `simular_pagamento` (e a conferência das constantes contra o manual) e a poda de histórico. Inclui `test_policies_sem_perda`, que garante que a curadoria de `policies.md` mexeu em forma e não em conteúdo: todo número, valor e e-mail do `policies_raw.md` sobrevive no curado. Rápido, roda em qualquer lugar.
+- **`test_live.py`** (33 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta — cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é o que trava regressão de comportamento quando o prompt muda.
 
 Evals: Cada execução escreve **[`eval_report.md`](eval_report.md)** com a taxa e a latência (mediana e pior caso) de cada caso. O arquivo é versionado de propósito: quem for avaliar o projeto vê o número sem precisar instalar o LM Studio e baixar o modelo.
 
@@ -408,49 +405,7 @@ exclusivos do `status_pedido`, que exige número + e-mail. O número não é um 
 proteger: `order_id` é sequencial de 1 a 20, então quem tem o e-mail já podia enumerar. O
 e-mail sempre foi o fator único; a ferramenta só torna isso visível.
 
-### 13. Compra — a fronteira de escrita
-
-O agente fecha vendas: identifica o cliente pelo e-mail, monta o pedido, mostra o preço
-final e, com a confirmação do cliente, **grava** — cria o pedido com rastreio, baixa o
-estoque e cadastra o cliente se ele for novo.
-
-**O que muda e o que não muda.** O README afirmava duas coisas: *o LLM nunca gera SQL* e
-*o banco é só leitura*. A primeira continua verdadeira — a tool executa `INSERT`/`UPDATE`
-fixos e parametrizados, e o modelo só preenche argumentos. A segunda deixa de valer, e só
-dentro de uma compra confirmada. Cadastrar cliente também acontece **apenas** aqui: a
-decisão de não criar cadastro a partir de uma saudação (§12) continua de pé.
-
-**A guarda: dois passos com código.** `comprar` sem `codigo_de_confirmacao` é uma prévia —
-valida, calcula e devolve o resumo com um código derivado do conteúdo do pedido (hash de
-produto, quantidade, e-mail, forma de pagamento e total). Só a chamada que traz esse código
-grava. O modelo não tem como adivinhá-lo, então **não consegue gravar sem ter passado pela
-prévia** — que é onde o preço aparece para o cliente. Com um parâmetro `confirmado: bool` no
-lugar, o modelo marcaria `True` sozinho. O código não substitui o "sim" do cliente, que é
-regra de prompt; ele fecha o atalho silencioso.
-
-**As opções de pagamento, com número.** A prévia não mostra só o total da forma escolhida:
-traz também quanto sairia no PIX e em quantas vezes dá para parcelar, com o valor da
-parcela. O cliente escolhe vendo a diferença, em vez de decidir antes de saber o preço.
-O parcelamento aceita **qualquer** número de vezes até o teto da §3.1 — a primeira versão
-só aceitava 3x, 6x e 12x, que são os valores que aparecem no dataset, e recusava um 5x
-perfeitamente legal. O dataset é uma amostra, não a regra: quem recusa é a parcela mínima
-da faixa, conferida com o total na mão, e a recusa vem com o teto real ("em 12x a parcela
-ficaria R$ 19,57; para R$ 234,90 o máximo é 3x de R$ 78,30").
-
-**Nenhum dado de pagamento.** Não se pede nem se aceita número de cartão, chave PIX ou CPF —
-`_parece_credencial` recusa qualquer forma de pagamento com 8+ dígitos. O que fica gravado é
-o **rótulo** do método (`pix`, `credit_12x`), que é exatamente o que a coluna
-`orders.payment_method` já continha nos 20 pedidos do dataset. Um protótipo não tem por que
-tocar em dado de pagamento para demonstrar que sabe vender.
-
-**O que a venda persiste.** `build_db.py` recarrega os CSVs, mas **preserva** o que o agente
-criou: pedidos e clientes com id acima do máximo do CSV, e a baixa de estoque correspondente.
-A preservação não guarda estado — recomputa o delta a partir dos pedidos vivos, então dois
-builds seguidos dão o mesmo resultado. `--reset` descarta tudo e volta ao estado canônico,
-que é o que os testes usam. (Um bug real apareceu aqui: a primeira versão descontava também
-os pedidos **cancelados**, cujo estoque já tinha voltado, e o estoque encolhia a cada build.)
-
-### 14. Parcelamento e frete — a única regra de política que virou código
+### 13. Parcelamento e frete — a única regra de política que virou código
 
 `simular_pagamento` calcula quantas parcelas cabem num valor, quanto fica cada uma, o preço
 no PIX e o frete metropolitano. Isso contraria a convenção do projeto (regra de política
