@@ -163,11 +163,9 @@ def test_detalhe_produto():
 
 def test_status_pedido():
     # pedido 5: cliente 5 = Rafael Augusto Pereira / rafael.pereira@jmail.com, feito em 2026-01-05
-    ok = status_pedido.invoke({"order_id": 5, "identificador": "Rafael Pereira"})
+    ok = status_pedido.invoke({"order_id": 5, "identificador": "rafael.pereira@jmail.com"})
+    assert "Pedido 5" in ok
     assert "entregue" in ok and "há 79 dias" in ok  # ref = 2026-03-25
-
-    ok_email = status_pedido.invoke({"order_id": 5, "identificador": "rafael.pereira@jmail.com"})
-    assert "Pedido 5" in ok_email
 
     # policies.md §4.1 conta os 7 dias do RECEBIMENTO, não da compra, e o dataset não tem
     # essa data. A tool precisa dizer isso — senão o agente compara com o relógio errado.
@@ -198,45 +196,73 @@ def test_total_do_pedido_diverge_da_soma():
 
 
 def test_identidade_nao_burlavel():
+    """Pedido + e-mail exato. Nome nunca libera — nem o completo, nem o do cadastro."""
     from tools import _identidade_confere
-
-    # token isolado (substring / 1 palavra) não libera
-    assert "não posso liberar" in status_pedido.invoke({"order_id": 6, "identificador": "santos"})
-    assert "não posso liberar" in status_pedido.invoke({"order_id": 11, "identificador": "ana"})
-    # nome + sobrenome reais continuam liberando (por nome e por e-mail)
-    assert "Pedido 6" in status_pedido.invoke({"order_id": 6, "identificador": "Gabriel Santos"})
-    assert "Pedido 5" in status_pedido.invoke({"order_id": 5, "identificador": "Rafael Pereira"})
 
     conn = sqlite3.connect(DB_PATH)
     clientes = conn.execute("SELECT name, email FROM customers").fetchall()
+    pedidos = conn.execute(
+        "SELECT o.order_id, c.name, c.email FROM orders o "
+        "JOIN customers c USING(customer_id)").fetchall()
     conn.close()
 
-    # ataque 1: primeiro nome repetido ("Ana Ana")
-    for nome, email in clientes:
-        p = nome.split()[0]
-        assert not _identidade_confere(f"{p} {p}", nome, email), f"'{p} {p}' burlou {nome}"
+    for oid, nome, email in pedidos:
+        ok = status_pedido.invoke({"order_id": oid, "identificador": email})
+        assert f"Pedido {oid}" in ok, f"e-mail correto não abriu o pedido {oid}"
+        # o nome completo do próprio cliente passou a NÃO servir (era a rota antiga)
+        assert "não posso liberar" in status_pedido.invoke(
+            {"order_id": oid, "identificador": nome}), f"nome liberou o pedido {oid}"
+        # e-mail com um caractere trocado não passa
+        typo = email.replace("@", "@x", 1)
+        assert "não posso liberar" in status_pedido.invoke(
+            {"order_id": oid, "identificador": typo}), f"typo liberou o pedido {oid}"
 
-    # ataque 2: string única com dezenas de nomes/sobrenomes comuns, conhecimento zero
+    # caixa e acento não importam; espaço em volta também não
+    assert _identidade_confere("  ANACAROL.FERREIRA@COLDMAIL.COM ",
+                               "anacarol.ferreira@coldmail.com")
+    assert not _identidade_confere("", "anacarol.ferreira@coldmail.com")
+
+    # ataques que derrubaram as versões anteriores (nome), agora impossíveis por construção
     spray = ("ana maria jose pedro joao lucas rafael bruno gabriel thiago diego marcelo "
-             "felipe mariana juliana camila fernanda patricia leticia amanda beatriz larissa "
-             "silva santos costa souza oliveira pereira lima ferreira rodrigues almeida araujo "
-             "carvalho ribeiro martins gomes dias nunes cardoso mendes barbosa")
+             "silva santos costa souza oliveira pereira lima ferreira rodrigues almeida")
     for nome, email in clientes:
-        assert not _identidade_confere(spray, nome, email), f"spray burlou {nome}"
+        assert not _identidade_confere(spray, email), f"spray burlou {nome}"
+        assert not _identidade_confere(nome, email), f"nome burlou {nome}"
+        assert not _identidade_confere(email.split("@")[0], email), "usuário sem domínio"
 
-    # ataque 3: sobrenomes isolados, cada pedido
-    for sobren in "santos silva costa souza oliveira pereira lima ferreira".split():
-        for oid in range(1, 21):
-            assert "não posso liberar" in status_pedido.invoke({"order_id": oid, "identificador": sobren})
 
-    # resíduo conhecido e LIMITADO: nome real de um cliente pode ser subconjunto do de
-    # outro ("Bruno Carvalho" ⊂ "Bruno Carvalho Martins"). Não é ataque cego. O teste
-    # garante que não passa de um punhado — se disparar, algum bug de agregação voltou.
-    cruzadas = sum(
-        1 for a in clientes for b in clientes
-        if a[0] != b[0] and _identidade_confere(a[0], b[0], b[1])
-    )
-    assert cruzadas <= 3, f"colisões cruzadas subiram para {cruzadas} — regressão de agregação"
+def test_simular_pagamento():
+    """Duas coisas: a conta, e a DUPLICAÇÃO.
+
+    A tabela de constantes em tools.py é a única regra de política que vive em código
+    (é aritmética, e o modelo erra). A primeira metade deste teste é o guard-rail dessa
+    exceção: cada número tem que existir literalmente no texto de policies.md. Se o
+    manual mudar e o código não, quebra aqui apontando qual constante divergiu.
+    """
+    from tools import _brl, _FAIXAS_PARCELAMENTO, _FRETE_CG, _PIX_DESCONTO, simular_pagamento
+
+    politica = POLICIES_PATH.read_text(encoding="utf-8")
+    pct = f"{int(_PIX_DESCONTO * 100)}%"
+    assert pct in politica, f"desconto do PIX ({pct}) não está mais no manual"
+    for ate, minimo in _FAIXAS_PARCELAMENTO:
+        assert f"{ate}x" in politica, f"faixa de {ate}x sumiu do manual"
+        assert _brl(minimo) in politica, f"parcela mínima {_brl(minimo)} sumiu do manual"
+    for v in _FRETE_CG:
+        assert _brl(v) in politica, f"valor de frete {_brl(v)} sumiu do manual"
+
+    sim = lambda v, cg=False: simular_pagamento.invoke(
+        {"valor": v, "entrega_em_campo_grande": cg})
+
+    # 2199/12 = 183,25 >= 100 -> cabe em 12x
+    assert "12x sem juros, de R$ 183,25" in sim(2199)
+    assert "R$ 2.089,05" in sim(2199)                      # PIX -5%
+    # 549/12 = 45,75 < 100 e 549/7 = 78,43 < 100; 549/6 = 91,50 >= 80 -> teto é 6x
+    assert "6x sem juros, de R$ 91,50" in sim(549), sim(549)
+    # abaixo do mínimo até em 2x
+    assert "só à vista" in sim(40)
+    # frete metropolitano: a única metade calculável
+    assert "R$ 35,00" in sim(480, cg=True) and "grátis" in sim(520, cg=True)
+    assert "NÃO tenho como calcular" in sim(480), "fora de CG não pode virar número"
 
 
 def test_poda_historico():
@@ -263,18 +289,18 @@ def test_poda_historico():
 
 
 def test_agente_compila():
-    """O grafo monta, as 4 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
+    """O grafo monta, as 5 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
     from agent import build_agent
     from tools import TOOLS
     a = build_agent()
     assert a.__class__.__name__ == "CompiledStateGraph"
-    assert len(TOOLS) == 4
+    assert len(TOOLS) == 5
 
 
 TESTS = [test_etl_views, test_policies_sem_perda, test_consultar_politica,
          test_buscar_produtos, test_total_do_pedido_diverge_da_soma,
          test_detalhe_produto, test_status_pedido, test_identidade_nao_burlavel,
-         test_poda_historico, test_agente_compila]
+         test_simular_pagamento, test_poda_historico, test_agente_compila]
 
 
 def main():

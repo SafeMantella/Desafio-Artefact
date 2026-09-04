@@ -347,6 +347,78 @@ def detalhe_produto(nome_ou_id: str) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Pagamento e frete — a ÚNICA regra de política que vive em código
+# ---------------------------------------------------------------------------
+# A convenção do projeto é que regra de política vive no texto (policies.md), não em código.
+# Aqui abrimos exceção por um motivo: isto é ARITMÉTICA, e é onde a alucinação do modelo
+# aparece — "R$ 549 em 12x" dá parcela de R$ 45,75, abaixo do mínimo da faixa, e o agente
+# responde "pode sim" se tiver que calcular de cabeça a partir do texto da política.
+#
+# Para a exceção não virar dívida escondida, os números ficam TODOS nesta tabela e o
+# `test_simular_pagamento` confere cada um contra o texto de policies.md: se o manual mudar
+# e isto não, o teste quebra dizendo qual constante divergiu.
+_PIX_DESCONTO = 0.05                                          # §3, linha do PIX
+_FAIXAS_PARCELAMENTO = ((3, 50.0), (6, 80.0), (12, 100.0))    # §3.1: (até Nx, parcela mínima)
+_FRETE_CG = (500.0, 35.0)                                     # §5.1: (grátis acima de, taxa fixa)
+
+
+def _max_parcelas(valor: float) -> tuple[int, float]:
+    """(nº máximo de parcelas, valor da parcela), respeitando o mínimo de cada faixa."""
+    minimo = lambda n: next((m for ate, m in _FAIXAS_PARCELAMENTO if n <= ate), None)
+    for n in range(_FAIXAS_PARCELAMENTO[-1][0], 1, -1):
+        if valor / n >= minimo(n):
+            return n, valor / n
+    return 1, valor
+
+
+@tool
+def simular_pagamento(valor: float, entrega_em_campo_grande: bool = False) -> str:
+    """Calcula as formas de pagamento para um valor: preço à vista no PIX, em quantas vezes
+    dá para parcelar e quanto fica cada parcela. Opcionalmente, o frete metropolitano.
+
+    Use SEMPRE que a pergunta envolver CONTA sobre um valor concreto: "dá pra parcelar em
+    12x?", "quanto fica a parcela?", "em quantas vezes posso dividir?", "quanto sai no PIX?",
+    "pago frete nessa compra?". NUNCA faça essa conta de cabeça.
+    Para as regras gerais de pagamento, sem um valor na mesa, use consultar_politica.
+
+    valor: o total em reais (ex.: o preço do instrumento que o cliente escolheu).
+    entrega_em_campo_grande: True só se o cliente disse que é em Campo Grande ou região
+        metropolitana. Se ele não disse, deixe False e pergunte a cidade.
+    """
+    log.debug("simular_pagamento(valor=%s, cg=%s)", valor, entrega_em_campo_grande)
+    if not valor or valor <= 0:
+        return "Preciso do valor da compra para calcular. Confirme o produto com o cliente."
+
+    n, parcela = _max_parcelas(valor)
+    linhas = [
+        f"Simulação para {_brl(valor)}:",
+        f"- À vista no PIX: {_brl(valor * (1 - _PIX_DESCONTO))} "
+        f"({int(_PIX_DESCONTO * 100)}% de desconto). Esse desconto NÃO se aplica sobre preço "
+        "que já está promocional.",
+    ]
+    if n == 1:
+        linhas.append("- Cartão de crédito: só à vista. Nesse valor, mesmo em 2x a parcela "
+                      "ficaria abaixo do mínimo permitido pela política.")
+    else:
+        linhas.append(f"- Cartão de crédito: até {n}x sem juros, de {_brl(parcela)} cada. "
+                      f"Acima de {n}x a parcela cairia abaixo do mínimo da faixa.")
+
+    gratis_acima, taxa = _FRETE_CG
+    if entrega_em_campo_grande:
+        linhas.append(f"- Frete em Campo Grande e região: grátis (acima de {_brl(gratis_acima)})"
+                      if valor > gratis_acima else
+                      f"- Frete em Campo Grande e região: {_brl(taxa)} "
+                      f"(seria grátis acima de {_brl(gratis_acima)})")
+    else:
+        linhas.append(
+            "- Frete: para fora de Campo Grande NÃO tenho como calcular — depende do CEP, do "
+            "peso e das dimensões. Diga isso ao cliente com franqueza, informe as modalidades "
+            "e prazos (consultar_politica sobre frete) e ofereça falar com a equipe para uma "
+            "cotação, passando o contato que a política de atendimento traz.")
+    return "\n".join(linhas)
+
+
+# ---------------------------------------------------------------------------
 # Pedidos (emporio.db) — com verificação leve de identidade (LGPD, política 9)
 # ---------------------------------------------------------------------------
 
@@ -367,41 +439,27 @@ def _pagamento(m: str) -> str:
     return f"cartão de crédito em {mx.group(1)}x" if mx else (m or "não informado")
 
 
-_PARTICULAS = {"de", "da", "do", "dos", "das", "e"}
+def _identidade_confere(identificador: str, email: str) -> bool:
+    """Libera o pedido só com o e-mail EXATO do cadastro (normalizado: caixa e acento).
 
-
-def _identidade_confere(identificador: str, nome: str, email: str) -> bool:
-    """Verificação leve, mas não trivial de burlar. Passa se:
-      - o identificador é o e-mail exato do cliente; OU
-      - traz o PRIMEIRO NOME do cliente + pelo menos 2 partes DISTINTAS do nome cadastrado,
-        e NENHUMA palavra que não seja parte do nome (match de palavra inteira, não substring).
-
-    Recusa: "santos"/"ana" sozinhos; "Ana Ana" (nome repetido); e "spray" de nomes comuns
-    (qualquer palavra fora do nome invalida tudo).
+    Antes valia também nome+sobrenome. Era mais amigável e menos seguro: exigia três
+    versões de heurística contra spray de nomes comuns e ainda deixava colidir clientes
+    cujo nome é subconjunto do outro. Pedido + e-mail é o par que um e-commerce real pede,
+    e cabe numa linha que não tem como regredir.
     """
-    ident = _norm(identificador)
-    if not ident:
-        return False
-    if ident == _norm(email):
-        return True
-    partes = _norm(nome).split()
-    if not partes:
-        return False
-    informados = [t for t in ident.split() if len(t) > 1 and t not in _PARTICULAS]
-    return (partes[0] in informados
-            and len(set(informados)) >= 2
-            and all(t in set(partes) for t in informados))
+    return bool(identificador.strip()) and _norm(identificador) == _norm(email)
 
 
 @tool
 def status_pedido(order_id: int, identificador: str) -> str:
     """Consulta o andamento de um pedido. Exige verificação de identidade (LGPD): só retorna
-    os dados se `identificador` for o e-mail exato OU trouxer nome E sobrenome do cliente do
-    pedido. Um nome só (ex.: "Ana") ou um sobrenome só NÃO é aceito.
+    os dados se `identificador` for o E-MAIL EXATO do cadastro daquele pedido. Nome, mesmo
+    completo, NÃO é aceito.
 
     order_id: número do pedido.
-    identificador: e-mail, ou nome e sobrenome do cliente, informado por ele. Se o cliente
-    ainda não informou, PEÇA antes de chamar esta ferramenta.
+    identificador: o e-mail que o cliente usou na compra, exatamente como ele informou. Se
+    o cliente ainda não deu o e-mail, PEÇA antes de chamar esta ferramenta — e não tente
+    adivinhar nem montar o e-mail a partir do nome.
 
     Retorna status, itens, valor, forma de pagamento, previsão de entrega, código de
     rastreio e há quantos dias a COMPRA foi feita. Atenção: o sistema não guarda data de
@@ -418,10 +476,10 @@ def status_pedido(order_id: int, identificador: str) -> str:
         itens = c.execute("SELECT quantity, produto, preco_tabela FROM v_pedido_item "
                           "WHERE order_id = ?", [order_id]).fetchall()
 
-    if not _identidade_confere(identificador, cli["name"] if cli else "", cli["email"] if cli else ""):
-        return (f"Por segurança, não posso liberar os dados do pedido {order_id}: o nome/e-mail "
-                "informado não confere com o cadastro. Pode confirmar o nome completo ou o "
-                "e-mail usado na compra?")
+    if not _identidade_confere(identificador, cli["email"] if cli else ""):
+        return (f"Por segurança, não posso liberar os dados do pedido {order_id}: o e-mail "
+                "informado não confere com o cadastro. Pode confirmar o e-mail usado na "
+                "compra? Só com ele eu consigo abrir o pedido.")
 
     d = date.fromisoformat(o["order_date"])
     dias = (DATA_REFERENCE_DATE - d).days
@@ -458,4 +516,5 @@ def status_pedido(order_id: int, identificador: str) -> str:
     return "\n".join(linhas)
 
 
-TOOLS = [buscar_produtos, detalhe_produto, status_pedido, consultar_politica]
+TOOLS = [buscar_produtos, detalhe_produto, status_pedido, consultar_politica,
+         simular_pagamento]

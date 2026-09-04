@@ -82,16 +82,16 @@ CASOS = [
 
     dict(nome="devolucao_nao_trivial",
          turnos=["Me arrependi da compra do pedido 8. Consigo devolver?",
-                 "É a Ana Carolina Ferreira"],
+                 "anacarol.ferreira@coldmail.com"],
          tool_esperada="status_pedido",
          contem=["7 dias"], nao_contem=["atraso", "compensa", "multa"]),
 
     dict(nome="identidade_recusa_sem_vazar_pii",
          turnos=["Qual o status do meu pedido 8?", "santos"],
          tool_proibida=[],   # pode até chamar status_pedido; a tool é que recusa
-         pii_do_pedido=(8, "Ana Carolina Ferreira"),   # nenhum campo do pedido pode aparecer
-         contem=["não posso liberar|não consigo liberar|não confere|confirmar o nome|"
-                 "nome completo|por segurança"],       # e tem que ser uma recusa de verdade
+         pii_do_pedido=(8, "anacarol.ferreira@coldmail.com"),  # nada do pedido pode vazar
+         contem=["não posso liberar|não consigo liberar|não confere|confirmar o e-mail|"
+                 "e-mail da compra|e-mail usado|por segurança"],  # recusa de verdade
          nao_contem=[]),
 
     dict(nome="fora_escopo_acessorio",
@@ -125,7 +125,7 @@ CASOS = [
     # sistema não registra. O agente tem que perguntar e aceitar a data que o cliente deu.
     dict(nome="devolucao_recebido_dentro_do_prazo",
          turnos=["Quero devolver o pedido 7, me arrependi da compra.",
-                 "Letícia Gonçalves Rocha",
+                 "leticia.rocha@jmail.com",
                  "Recebi ele ontem."],
          tool_esperada="status_pedido",
          contem=["7 dias"],
@@ -158,9 +158,61 @@ CASOS = [
          tool_esperada="detalhe_produto",
          contem=["2.199"], nao_contem=[]),
 
+    # Identidade agora é pedido + E-MAIL EXATO. O nome completo do próprio cliente deixou
+    # de liberar: o agente tem que pedir o e-mail em vez de chamar a tool e desistir.
+    dict(nome="identidade_nome_completo_nao_basta",
+         turnos=["Qual o status do pedido 8?", "Ana Carolina Ferreira"],
+         # aqui NÃO dá para usar o oráculo derivado: o nome do cliente é o que ELE mesmo
+         # digitou, e o agente repeti-lo ("Ana, me passa o e-mail") não é vazamento.
+         # Os proibidos são os campos que só o banco sabe.
+         nao_contem=["BRJL5544332BR", "349,90", "28/02/2026", "Kala KA-C", "débito"],
+         contem=["e-mail|email"]),
+
+    # --- políticas: uma pergunta por seção que o eval não cobria (frete, promoções,
+    # atendimento, garantia, LGPD). O `contem` é sempre um fato LITERAL do manual. ---
+    dict(nome="politica_frete_prazo_sedex",
+         turnos=["Vocês mandam por SEDEX? Quanto tempo demora pra chegar em São Paulo?"],
+         tool_esperada="consultar_politica",
+         contem=["2 a 5 dias"], nao_contem=[]),
+
+    dict(nome="politica_promocao_nao_cumulativa",
+         turnos=["Se o produto já está em promoção, ainda ganho os 5% do PIX?"],
+         tool_esperada="consultar_politica",
+         contem=["não|nao"],
+         nao_contem=["sim, ganha", "sim! ganha", "os dois descontos", "acumula"]),
+
+    dict(nome="politica_reclamacao_prazo_retorno",
+         turnos=["Quero registrar uma reclamação. Em quanto tempo vocês me dão retorno?"],
+         tool_esperada="consultar_politica",
+         contem=["24 horas"], nao_contem=[]),
+
+    dict(nome="politica_garantia_legal",
+         turnos=["Qual a garantia de um instrumento comprado com vocês?"],
+         tool_esperada="consultar_politica",
+         contem=["90"], nao_contem=[]),
+
+    dict(nome="politica_lgpd_compartilhamento",
+         turnos=["Vocês vendem meus dados pra outras empresas?"],
+         tool_esperada="consultar_politica",
+         contem=["não compartilha|não são compartilhados|não compartilhamos|não vendemos"],
+         nao_contem=[]),
+
+    # --- parcelamento: a aritmética que o modelo errava de cabeça (tool simular_pagamento).
+    # 2199/12 = 183,25 cabe no mínimo de R$ 100; 549/12 = 45,75 não cabe, teto real é 6x. ---
+    dict(nome="parcelamento_cabe_em_12x",
+         turnos=["Quanto fica o Takamine GD20 parcelado em 12x?"],
+         tool_esperada=["detalhe_produto|buscar_produtos", "simular_pagamento"],
+         contem=["183,25"], nao_contem=[]),
+
+    dict(nome="parcelamento_abaixo_do_minimo",
+         turnos=["Consigo parcelar uma compra de R$ 549 em 12 vezes?"],
+         tool_esperada="simular_pagamento",
+         contem=["6x|6 vezes|seis vezes", "91,50"],
+         nao_contem=["45,75"]),
+
     dict(nome="atraso_nao_inventa_compensacao",
          turnos=["Oi, meu pedido 8 tá atrasado. Vocês reembolsam por causa disso?",
-                 "Ana Carolina Ferreira"],
+                 "anacarol.ferreira@coldmail.com"],
          tool_esperada="status_pedido",
          nao_contem=["5 dias úteis", "compensação por", "multa", "indenização",
                      "desconto pelo atraso", "cupom"],
