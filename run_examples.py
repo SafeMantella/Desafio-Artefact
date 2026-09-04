@@ -33,13 +33,6 @@ EXEMPLOS = [
         "leticia.rocha@jmail.com",
         "Recebi ele ontem.",
     ]),
-    # O fluxo de abertura da §7.2: convida a identificação sem exigir, reconhece o cliente
-    # pelo primeiro nome, usa a cidade dele para o frete e oferece o pedido em trânsito.
-    ("06_cliente_identificado", "Identificação opcional na abertura + atendimento personalizado", [
-        "Oi! Meu e-mail é anacarol.ferreira@coldmail.com",
-        "Queria ver uma bateria acústica.",
-        "Quanto fica a mais barata parcelada, com frete?",
-    ]),
     ("05_fora_de_escopo", "Fora do escopo: acessório e pergunta aleatória", [
         "Vocês vendem cordas de violão?",
         "Beleza. E me passa uma receita de bolo de chocolate?",

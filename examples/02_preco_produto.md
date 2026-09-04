@@ -20,14 +20,16 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 > 
 > Violão dreadnought Takamine com tampo sólido em cedro. Excelente para fingerstyle com timbre quente e definido.
 
-**Assistente:** Oi! O **Takamine GD20 Dreadnought Natural** está à venda e em estoque.
+**Assistente:** Oi! Sou a **melodIA**, da Empório da Música — sua música começa aqui! 😊
+
+O **Takamine GD20 Dreadnought Natural** está à venda e em estoque!
 
 - **Preço de tabela:** R\$ 2.199,00
-- **À vista no PIX:** R\$ 2.089,05 (desconto fixo de 5% do PIX — é permanente!)
+- **À vista no PIX:** R\$ 2.089,05 (desconto fixo de 5% do PIX)
 
-É um violão dreadnought com tampo sólido em cedro, ideal para fingerstyle. Quer que eu detalhe as specs técnicas?
+É um violão dreadnought com tampo sólido em cedro, ideal para fingerstyle — timbre quente e bem definido!
 
-Sua música começa aqui! 🎸
+Quer que eu detalhe as especificações técnicas ou tem alguma outra dúvida? E se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico!
 
 **Cliente:** E se eu pagar no pix?
 
@@ -40,41 +42,10 @@ Sua música começa aqui! 🎸
 > - Cartão de crédito: até 12x sem juros, de R\$ 183,25 cada. Acima de 12x a parcela cairia abaixo do mínimo da faixa.
 > - Frete: para fora de Campo Grande NÃO tenho como calcular — depende do CEP, do peso e das dimensões. Diga isso ao cliente com franqueza, informe as modalidades e prazos (consultar_politica sobre frete) e ofereça falar com a equipe para uma cotação, passando o contato que a política de atendimento traz.
 
-> 🔧 chama `consultar_politica(topico='frete')`
+**Assistente:** Oi! Se pagar no **PIX**, sai **R\$ 2.089,05** — é o desconto fixo de 5% que a loja aplica.
 
-> 🔧 `consultar_politica` →
->
-> ## 5. Política de Frete e Entregas
-> 
-> ### 5.1 Região metropolitana de Campo Grande
-> - Frete grátis para pedidos acima de R\$ 500,00.
-> - Pedidos abaixo de R\$ 500,00: taxa fixa de R\$ 35,00.
-> - Prazo de entrega: 1 a 3 dias úteis.
-> - Entrega por motoboy próprio; o cliente é contactado por telefone antes da entrega.
-> 
-> ### 5.2 Outras cidades
-> Correios (PAC e SEDEX) e transportadora Jadlog.
-> 
-> | Modalidade | Prazo estimado | Rastreamento | Seguro |
-> |---|---|---|---|
-> | PAC (Correios) | 5 a 12 dias úteis | Sim | Incluído |
-> | SEDEX (Correios) | 2 a 5 dias úteis | Sim | Incluído |
-> | Jadlog (.package) | 3 a 8 dias úteis | Sim | Incluído |
-> 
-> Frete calculado automaticamente por CEP de destino, peso e dimensões. Instrumentos de grande porte
-> (baterias acústicas, pianos digitais, contrabaixos) podem exigir frete especial com cotação individual.
-> Todos os envios têm seguro contra extravio e danos. Em caso de avaria, recusar o recebimento e
-> contatar a loja imediatamente.
-> 
-> ### 5.3 Código de rastreamento
-> Enviado automa […]
+Quer ver também as outras opções? Dá pra parcelar em **até 12x sem juros**, de R\$ 183,25 cada.
 
-**Assistente:** Oi! Se pagar no **PIX**, sai com o desconto fixo de 5% sobre a tabela:
+E se você é de **Campo Grande**, eu já calculo o frete metropolitano pra você. Se for de outra cidade, a gente cota depois — depende do CEP e das dimensões do violão.
 
-- **À vista no PIX:** R\$ 2.089,05
-
-É um desconto permanente da loja — vale sempre! 🎸
-
-Se quiser, posso te simular com o frete (se for para Campo Grande ou região metropolitana) ou ver outras formas de pagamento.
-
-Sua música começa aqui!
+Tem mais alguma dúvida ou quer fechar essa compra?

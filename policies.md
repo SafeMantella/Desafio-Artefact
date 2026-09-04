@@ -12,6 +12,11 @@ DIVERGÊNCIAS no PDF original — resolvidas aqui:
   fica registrada na seção 7.
 - E-mail: aparece com e sem acento no PDF ("empóriodamusica" x "emporiodamusica").
   Adotado contato@emporiodamusica.com.br (domínios não usam acento).
+- Parcela mínima do cartão: a tabela da seção 3 diz "parcela mínima de R$ 100,00" como se
+  fosse fixa; a seção 3.1 detalha por faixa (até 3x sem mínimo exceto abaixo de R$ 50,00;
+  4x-6x mínimo R$ 80,00; 7x-12x mínimo R$ 100,00). Adotada a 3.1, que é a regra específica
+  — a linha da tabela é o resumo da faixa mais alta. É o que tools._FAIXAS_PARCELAMENTO
+  implementa, e o que o test_simular_pagamento confere contra este texto.
 -->
 
 # Empório da Música — Manual de Políticas e Procedimentos (Atendimento ao Cliente)

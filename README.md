@@ -447,6 +447,15 @@ cotação. Uma tool que só reimprimisse a §5 seria uma segunda porta para a me
   para 65 produtos e 20 pedidos. Num protótipo local é irrelevante; num deploy pediria
   expiração ou um store separado do catálogo.
 - **Latência vs. o problema de volume.** Mediana de 32 s por caso e 177 s no pior, medidos em 87 execuções, sem *streaming* ([`eval_report.md`](eval_report.md)). Varia muito com o porte do modelo: os menores respondem em segundos e erram mais o *tool calling*.
+- **O agente não sabe que horas são.** O contexto traz a *data* de referência, nunca a
+  hora. A §7.1 pede que, fora do expediente, o assistente informe o horário de retorno —
+  isso não acontece: ele sabe dizer o horário de funcionamento (§2, via ferramenta), mas
+  não sabe se a loja está aberta agora. Fechar isso é passar um *datetime* em vez de uma
+  data e comparar com a tabela da §2.
+- **Reclamação não é registrada.** A §7.3 manda "ouvir com empatia, registrar e encaminhar
+  ao responsável". O agente ouve e encaminha, mas não registra nada: o banco é só leitura
+  e não há tabela de atendimentos. O prazo de retorno de 24 horas úteis ele informa
+  corretamente (caso de eval `politica_reclamacao_prazo_retorno`).
 - **Sem guard determinístico de escopo.** A recusa de assuntos fora da loja é só via prompt.
 - **Verificação de identidade não é autenticação.** Exige o e-mail exato do cadastro (ver decisão 6), mas não há login, código de confirmação nem rate limit — e `order_id` é sequencial. Suficiente para protótipo, não para produção.
 - **Busca de produto é lexical** (casa palavras no nome e nas specs, todas em E lógico).
@@ -458,6 +467,9 @@ cotação. Uma tool que só reimprimisse a §5 seria uma segunda porta para a me
   "Violão para iniciante" também não funciona: está só em `description`, que fica fora do
   match de propósito (ver o ruído nome × descrição abaixo).
 - **`consultar_politica` é por palavra-chave.** Uma pergunta com vocabulário muito distante das palavras mapeadas pode não casar a seção certa.
+- **Combinação de formas de pagamento não é simulada.** A §3.1 permite PIX + cartão acima
+  de R$ 2.000,00; `simular_pagamento` não oferece essa composição — ela só aparece se o
+  cliente perguntar as regras de pagamento e o agente ler a seção.
 - **Frete e parcelamento não são calculados** — o agente informa as regras da política, não simula valores para um CEP ou uma compra específica.
 - **Preço por item de pedido não existe no dado.** `order_items.csv` só tem quantidade. O
   que a loja cobrou está apenas no total do pedido, e em 2 dos 20 pedidos ele não bate com a

@@ -6,7 +6,7 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 
 **Cliente:** Comprei um ukulele aí e me arrependi. É o pedido 7, consigo devolver?
 
-> 🔧 chama `consultar_politica(topico='trocas/devoluções')`
+> 🔧 chama `consultar_politica(topico='trocas devoluções arrependimento')`
 
 > 🔧 `consultar_politica` →
 >
@@ -30,23 +30,29 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 > - Produto em perfeito estado e na embalagem original.
 > - Di […]
 
-**Assistente:** Olá! Sou a melodIA, da Empório da Música. 😊
+**Assistente:** Olá! Sou a melodIA, da Empório da Música — sua música começa aqui. Como posso te ajudar hoje?
 
-Para te ajudar com a devolução do pedido 7, preciso confirmar sua identidade por segurança (LGPD). Você poderia me passar o **e-mail** que usou na compra?
-
-Depois disso, vou precisar saber também **quando você recebeu o ukulele**, porque o prazo de arrependimento (7 dias corridos) conta a partir do recebimento, não da compra.
-
-Aguardo esses dois dados para verificar se você está dentro do prazo!
+Se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico.
 
 **Cliente:** Letícia Gonçalves Rocha
 
-**Assistente:** Olá, Letícia! 👋
+**Assistente:** Olá, Letícia! Prazer em te atender de novo.
 
-Entendi que você quer devolver o ukulele do pedido 7. Mas para eu poder consultar o status do seu pedido, preciso que você me passe o **e-mail** que usou na compra.
+Para eu consultar o status do seu pedido 7 e ver se está dentro do prazo de devolução, preciso do **e-mail** que você usou na compra. Pode me passar?
 
-O nome não serve para identificar o pedido — a ferramenta de consulta exige o e-mail exato do cadastro. Pode me passar o e-mail?
+Se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico.
 
 **Cliente:** leticia.rocha@jmail.com
+
+> 🔧 chama `identificar_cliente(email='leticia.rocha@jmail.com')`
+
+> 🔧 `identificar_cliente` →
+>
+> Cliente cadastrado: Letícia Gonçalves Rocha. Chame-o de Letícia (só o primeiro nome).
+> Cidade: Campo Grande.
+> É Campo Grande: ao usar simular_pagamento, passe entrega_em_campo_grande=True sem precisar perguntar a cidade.
+> Tem 1 pedido(s); o mais recente é de 03/02/2026.
+> Nenhum pedido em andamento. Se ele perguntar de um pedido antigo, peça o número e use status_pedido.
 
 > 🔧 chama `status_pedido(order_id=7, identificador='leticia.rocha@jmail.com')`
 
@@ -61,30 +67,23 @@ O nome não serve para identificar o pedido — a ferramenta de consulta exige o
 > Código de rastreio: BRKR1122334BR
 > Obs.: o sistema NÃO registra a data de recebimento, só a da compra. Se o prazo da política contar a partir do recebimento, pergunte ao cliente quando ele recebeu antes de dizer se está dentro ou fora do prazo.
 
-**Assistente:** Letícia, o pedido 7 está marcado como **entregue** (data de entrega: 17/02/2026).
+**Assistente:** Letícia, o pedido 7 já está com status **entregue** (foi entregue em 17/02).
 
-Mas para saber se você está dentro do prazo de devolução, preciso que me diga **quando exatamente você recebeu o ukulele**.
+Mas aqui tem um detalhe importante: a política de arrependimento conta **7 dias corridos a partir do RECEBIMENTO** — e o sistema não registra quando você recebeu, só quando comprou.
 
-A política de arrependimento conta os 7 dias corridos a partir do **recebimento**, não da compra. Como o sistema só registra a data de entrega, preciso confirmar com você quando o produto chegou em suas mãos.
-
-Quando foi que você recebeu?
+Para eu te dizer se ainda está dentro do prazo, me diz: **em que dia você recebeu o ukulele?**
 
 **Cliente:** Recebi ele ontem.
 
-**Assistente:** Perfeito! Se você recebeu o ukulele **ontem (24/03)**, então:
+**Assistente:** **Cálculo:**
+- Recebimento: 24/03 (ontem)
+- Prazo: 7 dias corridos a partir do recebimento
+- Último dia para devolução: **31/03**
 
-- Hoje é 25/03 → **1º dia** do prazo
-- Você tem até o **dia 30/03** para devolver (7 dias corridos a partir do recebimento)
+Sim, Letícia! Você ainda está dentro do prazo de 7 dias corridos. A devolução é viável, desde que o ukulele esteja na embalagem original, sem sinais de uso e com todos os acessórios.
 
-Então **sim, você está dentro do prazo!** 🎉
+**O que fazer:**
+1. Mantenha o produto na embalagem original, com todos os acessórios e manuais
+2. Entre em contato conosco para agendar a coleta do frete (a loja cobre o frete de devolução no caso de arrependimento)
 
-**Resumo da situação:**
-- Pedido 7: ukulele Shelby SU-21S Soprano Sunburst, R\$ 159,90
-- Status: entregue (data de entrega: 17/02)
-- Prazo para devolução: até **30/03** (7 dias corridos a partir do recebimento)
-
-O que você precisa fazer:
-1. Manter o ukulele na embalagem original, sem sinais de uso, com todos os acessórios e manuais
-2. Entrar em contato conosco para agendar a devolução
-
-Quer que eu te ajude com mais alguma coisa sobre o processo de devolução?
+Quer que eu te ajude a formalizar esse processo agora?
