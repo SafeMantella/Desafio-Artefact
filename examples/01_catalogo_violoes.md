@@ -41,7 +41,7 @@ Encontrei 12 violões disponíveis até R\$ 1000! Aqui está a lista:
 - **Tagima Woodstock Dreadnought Natural** — R\$ 899,00
 - **Tagima TW-7 7 Cordas Aço Natural** — R\$ 999,00
 
-Tem algum modelo que te chamou mais atenção? Posso te passar as especificações técnicas de qualquer um deles! 🎸
+Tem algum modelo que te chamou mais atenção? Posso te passar as especificações técnicas de um deles! 🎸
 
 Sua música começa aqui.
 
@@ -63,8 +63,8 @@ Sua música começa aqui.
 
 **Assistente:** Oi! O **Yamaha F310 Aço Natural** não tem nenhuma promoção ativa no momento. 😊
 
-Mas atenção: o preço à vista no PIX de **R\$ 664,90** é um **desconto fixo de 5% do PIX**, que a loja aplica permanentemente em todas as compras. Isso não é uma promoção — é um benefício sempre disponível! 🎸
+Mas atenção: o preço à vista no PIX de **R\$ 664,90** é um desconto fixo de 5% que a loja aplica sempre no pagamento com PIX — isso não é uma promoção, é um benefício permanente!
 
-Se quiser, posso te mostrar as especificações técnicas completas desse violão (tampo, braço, cordas, etc.). Quer que eu detalhe?
+Se quiser, posso te passar as especificações técnicas completas desse violão (tampo, braço, escala, etc.). Quer que eu detalhe? 🎸
 
 Sua música começa aqui.

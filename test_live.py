@@ -189,8 +189,12 @@ CASOS = [
     dict(nome="politica_promocao_nao_cumulativa",
          turnos=["Se o produto já está em promoção, ainda ganho os 5% do PIX?"],
          tool_esperada="consultar_politica",
-         contem=["não se acumula|não são cumulativas|não é cumulativa|não acumula|"
-                 "não se aplica sobre"],
+         # radical em vez de flexão: o agente já disse "não é cumulativO", "não são
+         # cumulativAS" e "não se aplicAM" em rodadas diferentes, e a whitelist reprovou
+         # três respostas certas. A negação fica presa ao radical para "É cumulativo"
+         # (resposta errada) não passar.
+         contem=["não é cumulativ|não são cumulativ|não se acumula|não acumula|"
+                 "não se aplic|não cumulativ"],
          nao_contem=["sim, ganha", "sim! ganha", "os dois descontos"]),
 
     dict(nome="politica_reclamacao_prazo_retorno",

@@ -6,7 +6,7 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 
 **Cliente:** Qual o endereço da loja e que horas vocês abrem no sábado?
 
-> 🔧 chama `consultar_politica(topico='horário e endereço')`
+> 🔧 chama `consultar_politica(topico='endereço e horário')`
 
 > 🔧 `consultar_politica` →
 >
@@ -35,21 +35,19 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 
 **Assistente:** Oi! Tudo bem? Sou a **melodIA**, da Empório da Música. 😊
 
-Sobre o endereço e horário do sábado:
+Aqui estão as informações que você pediu:
 
-📍 **Endereço:**  
+**Endereço:**
 Rua 14 de Maio, 3200 — Centro, Campo Grande - MS, 79202-333
 
-⏰ **Horário de funcionamento no sábado:**  
-Das 09:00 às 13:00
+**Horário de sábado:**
+Das **09:00 às 13:00**
 
-A gente atende presencialmente nesse horário, e o WhatsApp também segue a mesma rotina (com respostas automáticas fora do expediente).
-
-Se precisar de mais alguma coisa — tipo catálogo, preços ou status de pedido — é só chamar! Sua música começa aqui. 🎸
+Se precisar de mais alguma coisa — como catálogo, preços ou status do seu pedido — é só chamar! Sua música começa aqui. 🎸
 
 **Cliente:** Vocês parcelam no cartão?
 
-> 🔧 chama `consultar_politica(topico='formas de pagamento')`
+> 🔧 chama `consultar_politica(topico='formas de pagamento e parcelamento')`
 
 > 🔧 `consultar_politica` →
 >
@@ -70,13 +68,12 @@ Se precisar de mais alguma coisa — tipo catálogo, preços ou status de pedido
 > - 7x a 12x: sem juros, parcela mínima de R\$ 100,00.
 > - Combinação de formas de pagamento (ex.: PIX + cartão): permitida para compras acima de R\$ 2.000,00.
 
-**Assistente:** Oi! Sim, a gente **parcela no cartão de crédito**! 🎸
+**Assistente:** Oi! Sim, nós **parcelamos no cartão de crédito**! 😊
 
 **Condições:**
-- Até **12x sem juros**, desde que a parcela seja de pelo menos R\$ 100,00
-- Até **3x sem juros** (sem valor mínimo)
-- De **4x a 6x sem juros**, com parcela mínima de R\$ 80,00
+- Até **12x sem juros**
+- Parcela mínima de **R\$ 100,00**
 
-E tem mais: se você pagar no **PIX**, ganha **5% de desconto** sobre o preço de tabela!
+Se quiser simular quanto fica a parcela ou se dá pra parcelar em um número específico de vezes, é só me dizer o valor do produto (ou do seu carrinho) que eu calculo pra você!
 
-Quer simular como fica o parcelamento de algum instrumento específico? É só me dizer qual modelo te interessou! Sua música começa aqui. 😊
+Sua música começa aqui. 🎸

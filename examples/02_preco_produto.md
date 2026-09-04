@@ -69,10 +69,12 @@ Sua música começa aqui! 🎸
 > ### 5.3 Código de rastreamento
 > Enviado automa […]
 
-**Assistente:** Oi! Se for pagar no PIX, sai **R\$ 2.089,05** — é o preço de tabela com os **5% de desconto fixo do PIX**.
+**Assistente:** Oi! Se pagar no **PIX**, sai com o desconto fixo de 5% sobre a tabela:
 
-E sobre o frete:
-- Se for em **Campo Grande ou região metropolitana**: **frete grátis** (pedido acima de R\$ 500).
-- Se for para **outra cidade**: a gente usa Correios (PAC ou SEDEX) ou Jadlog, com rastreamento incluso. O valor é calculado pelo CEP de destino — pode me passar a cidade que eu te dou uma estimativa?
+- **À vista no PIX:** R\$ 2.089,05
 
-Quer que eu detalhe mais alguma coisa ou tem outra dúvida? Sua música começa aqui! 🎸
+É um desconto permanente da loja — vale sempre! 🎸
+
+Se quiser, posso te simular com o frete (se for para Campo Grande ou região metropolitana) ou ver outras formas de pagamento.
+
+Sua música começa aqui!
