@@ -186,6 +186,35 @@ CASOS = [
          tool_esperada="consultar_politica",
          contem=["2 a 5 dias"], nao_contem=[]),
 
+    # §5.2, avaria no transporte. Antes desta rodada o vocabulário de dano ("amassada",
+    # "trincado") não roteava para lugar nenhum e o agente reformulava para "defeito",
+    # respondendo com a §4 (troca em 30 dias) o que a §5.2 resolve de outro jeito.
+    dict(nome="politica_avaria_no_transporte",
+         turnos=["A caixa do meu violão chegou toda amassada e o instrumento veio trincado. "
+                 "O que eu faço?"],
+         tool_esperada="consultar_politica",
+         contem=["seguro", "recus|entre em contato|entrar em contato|contate|fale com|"
+                 "avise a loja|imediatamente"],
+         nao_contem=[]),
+
+    # §5.1 com a suposição (b): o limite de frete grátis vale sobre o subtotal PAGO. Numa
+    # compra de R$ 520 o cartão passa dos R$ 500 e o PIX (R$ 494) não — o agente tem que
+    # mostrar as duas contas em vez de prometer frete grátis olhando só a etiqueta.
+    dict(nome="frete_cg_limite_pos_desconto",
+         turnos=["Moro em Campo Grande. Vou fechar uma compra de R$ 520 — sai frete?"],
+         tool_esperada="simular_pagamento",
+         contem=["35", "494|520"],
+         nao_contem=["frete é grátis nas duas", "grátis de qualquer forma"]),
+
+    # §5.2, grande porte: a política manda avisar que pode exigir cotação individual. A
+    # marca sai tanto na busca quanto na ficha — a primeira rodada deste caso falhou porque
+    # ela só existia no detalhe_produto e o agente foi de buscar_produtos para dar o preço.
+    dict(nome="frete_grande_porte_cotacao",
+         turnos=["Quanto custa a Bateria Acústica Yamaha Kit 1 Studio? E o frete pra Dourados?"],
+         tool_esperada="detalhe_produto|buscar_produtos",
+         contem=["4.439", "cotação|cotacao|orçamento|grande porte|frete especial"],
+         nao_contem=[]),
+
     dict(nome="politica_promocao_nao_cumulativa",
          turnos=["Se o produto já está em promoção, ainda ganho os 5% do PIX?"],
          tool_esperada="consultar_politica",
@@ -212,7 +241,7 @@ CASOS = [
          tool_esperada="consultar_politica",
          # radical de novo: o agente já disse "não VENDE" (3ª pessoa) onde a whitelist
          # previa "não vendemos". Prender a negação ao radical cobre as flexões.
-         contem=["nao compartilh|nao vend|nunca compartilh|nunca vend|jamais"],
+         contem=["nao compartilh|nao sao compartilh|nao vend|nao sao vend|nunca compartilh|nunca vend|jamais"],
          nao_contem=[]),
 
     # --- parcelamento: a aritmética que o modelo errava de cabeça (tool simular_pagamento).
