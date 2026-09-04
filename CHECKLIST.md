@@ -138,7 +138,10 @@ sido feito na Parte 9 foi verificado antes de mexer.
   itens, faixa de preço com promoção, conversa longa (poda ponta a ponta).
 - [x] **enunciado fora do repo** (`2c92d7d`): `.gitignore` + `git rm --cached`. Fecha a pendência
   aberta na Parte 8.
-- [ ] README com as decisões desta rodada + números reais do `eval_report.md`
+- [x] **README + evidência** (`fef902e`): decisões 2, 5, 7, 9 e 11 atualizadas; latência deixa
+  de ser chute (56 s de mediana, 415 s no pior, em 60 execuções); `eval_report.md` versionado
+  (20/20 em 3 rodadas com `qwen/qwen3.8-27b`); `examples/` regerados com o prompt novo — o 04
+  passou a ser o pedido 7 com "recebi ontem", que exercita o relógio de recebimento.
 
 Pendência opcional (Pedro): validar o Streamlit ao vivo com uma conversa de 15+ turnos — é o
 cenário que a poda de histórico endereça e o único que o `test_agent.py` não cobre sozinho.
