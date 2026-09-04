@@ -143,5 +143,13 @@ sido feito na Parte 9 foi verificado antes de mexer.
   (20/20 em 3 rodadas com `qwen/qwen3.8-27b`); `examples/` regerados com o prompt novo — o 04
   passou a ser o pedido 7 com "recebi ontem", que exercita o relógio de recebimento.
 
-Pendência opcional (Pedro): validar o Streamlit ao vivo com uma conversa de 15+ turnos — é o
-cenário que a poda de histórico endereça e o único que o `test_agent.py` não cobre sozinho.
+- [x] **validação da poda ao vivo**: `validacao_conversa_longa.md` — 42 turnos numa thread nova
+  (o corte disparou no turno 39) + dois anexos: o fluxo de devolução fechado com a poda ativa e
+  um corte profundo (22 de 36 mensagens, teto 2000 só naquele processo). Zero erro de API nos
+  três. Fecha a pendência da Parte 8.
+
+Achados que a validação levantou e que **não** foram mexidos (mudar o prompt invalidaria o
+`eval_report.md`, que é de outra configuração): o bordão "Sua música começa aqui." sai em 42 de
+42 respostas, contra a regra de parcimônia do prompt; e na fronteira do corte o agente pode ver
+o próprio eco de um fato já podado ("Olá, Pedro!") sem a origem — uma vez respondeu com a recusa
+de fora-de-escopo, outra percebeu sozinho. Decisão do Pedro se vira correção.
