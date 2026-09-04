@@ -44,12 +44,12 @@ E já adiantando: o direito de arrependimento vale por **7 dias corridos a parti
 > Cliente: Letícia Gonçalves Rocha
 > Data do pedido: 03/02/2026 (há 50 dias da compra; hoje = 25/03/2026)
 > Itens: 1x Shelby SU-21S Soprano Sunburst
-> Valor total: R$ 159,90  ·  Pagamento: cartão de crédito em 3x
+> Valor total: R\$ 159,90  ·  Pagamento: cartão de crédito em 3x
 > Previsão de entrega: 17/02/2026
 > Código de rastreio: BRKR1122334BR
 > Obs.: o sistema NÃO registra a data de recebimento, só a da compra. Se o prazo da política contar a partir do recebimento, pergunte ao cliente quando ele recebeu antes de dizer se está dentro ou fora do prazo.
 
-**Assistente:** Oi, Letícia! Encontrei seu pedido: **Shelby SU-21S Soprano Sunburst** por R$ 159,90, pago em 3x no cartão. O status está como entregue, com previsão de entrega em 17/02/2026.
+**Assistente:** Oi, Letícia! Encontrei seu pedido: **Shelby SU-21S Soprano Sunburst** por R\$ 159,90, pago em 3x no cartão. O status está como entregue, com previsão de entrega em 17/02/2026.
 
 Só falta um detalhe: o prazo de arrependimento é de **7 dias corridos a partir do recebimento**, e o sistema não registra a data exata em que você recebeu. Me conta: **em que data você recebeu o ukulele?** Com isso eu te digo se ainda dá tempo de devolver. 🎶
 

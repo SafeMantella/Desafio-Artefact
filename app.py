@@ -12,6 +12,13 @@ from config import MODEL, OPENAI_BASE_URL
 st.set_page_config(page_title="melodIA — Empório da Música", page_icon="🎸")
 
 
+def _md(texto: str) -> str:
+    """Escapa o cifrão antes de renderizar. O markdown do Streamlit trata `$...$` como
+    LaTeX, e um preço por linha já basta para engolir o texto ("R$ 2.199 ... R$ 2.089"
+    vira fórmula). Escapar em `_brl()` não serve: o `\\$` iria junto para o modelo."""
+    return texto.replace("$", "\\$")
+
+
 @st.cache_resource
 def _agente():
     return build_agent()
@@ -68,15 +75,15 @@ if "messages" not in st.session_state:
     st.session_state.messages = _historico(agente, st.session_state.thread_id)
 
 for papel, texto in st.session_state.messages:
-    st.chat_message(papel).write(texto)
+    st.chat_message(papel).write(_md(texto))
 
 if pergunta := st.chat_input("Como podemos ajudar?"):
     st.session_state.messages.append(("user", pergunta))
-    st.chat_message("user").write(pergunta)
+    st.chat_message("user").write(_md(pergunta))
     with st.chat_message("assistant"), st.spinner("consultando..."):
         try:
             resposta = responder(agente, pergunta, st.session_state.thread_id)
         except Exception as e:  # LM Studio caiu no meio, modelo sem tool use, etc.
             resposta = f"Ops, tive um problema para responder agora ({type(e).__name__}). Tente de novo."
-        st.write(resposta)
+        st.write(_md(resposta))
     st.session_state.messages.append(("assistant", resposta))

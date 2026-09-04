@@ -161,6 +161,27 @@ _CATEGORIAS = {
 
 CATEGORIAS_CONHECIDAS = ", ".join(sorted(set(_CATEGORIAS.values())))
 
+# Busca por especificação (o caso do músico que sabe exatamente o que quer).
+# `specs` está no banco como JSON cru e com as CHAVES em inglês ({"top": "Spruce Sólido",
+# "keys": "61"}), então a palavra do cliente ("tampo", "teclas") nunca aparece no texto
+# pesquisado. Esta tabela traduz o substantivo em PT-BR para o token que existe no JSON.
+# Os VALORES já casam direto (spruce, mahogany, maple, nylon, sunburst, 650mm) — só "aço"
+# precisa de tradução, porque no dado é "steel".
+# ponytail: tabela fixa, não sinônimo semântico. O dado mistura idiomas no mesmo campo
+# ("Mogno" no Kala, "Mahogany" na Gibson); cobrir isso pede busca semântica, não mais
+# entradas aqui — ver "Limitações conhecidas" no README.
+_SPECS_PT = {
+    "tampo": "top", "fundo": "back_sides", "laterais": "back_sides", "braco": "neck",
+    "corpo": "body", "escala": "scale", "cor": "color", "acabamento": "color",
+    "teclas": "keys", "polifonia": "polyphony", "pecas": "pieces", "cascos": "shells",
+    "ferragens": "hardware", "captacao": "electronics", "eletronica": "electronics",
+    "cordas": "strings", "aco": "steel",
+}
+
+# conectivos que o cliente escreve e que casariam por substring em qualquer lugar
+# ("de" está dentro de "Fender"), esvaziando o filtro em silêncio.
+_RUIDO_TERMO = {"de", "da", "do", "dos", "das", "e", "em", "com", "para", "por", "um", "uma"}
+
 _STATUS_PRODUTO = {"active": "à venda", "discontinued": "descontinuado", "coming_soon": "em breve no catálogo"}
 
 
@@ -184,7 +205,12 @@ def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float = 0,
     """Busca instrumentos no catálogo da loja. Use para perguntas sobre o que a loja tem,
     opções dentro de um preço, disponibilidade de um tipo de instrumento, etc.
 
-    termo: texto livre para casar no nome (ex.: "Yamaha", "dreadnought", "nylon").
+    termo: texto livre. Casa no nome E nas ESPECIFICAÇÕES do instrumento — use para o
+        cliente que pede por spec, não por modelo. Todas as palavras precisam casar.
+        Marca/modelo: "Yamaha", "Takamine GD20", "dreadnought".
+        Spec: "tampo spruce", "corpo mahogany", "cascos maple", "61 teclas",
+        "cordas de aço", "escala 650mm", "cor sunburst", "7 cordas".
+        Passe a spec como o cliente falou; não traduza nem invente termo técnico.
     categoria: tipo de instrumento (violão, guitarra, baixo, bateria, teclado, ukulele).
     preco_min / preco_max: faixa de preço em reais, sobre o preço EFETIVO (o promocional
         quando há promoção ativa, senão o de tabela). Use 0 (padrão) para "sem limite" —
@@ -228,9 +254,15 @@ def buscar_produtos(termo: str = "", categoria: str = "", preco_min: float = 0,
                 cat_do_termo = next((v for k, v in _CATEGORIAS.items() if k in _norm(termo)), None)
                 if cat_do_termo:
                     rows = [r for r in rows if r["categoria"] == cat_do_termo]
-            palavras = [p for p in _norm(termo).split() if p not in _CATEGORIAS]
+            palavras = [_SPECS_PT.get(p, p) for p in _norm(termo).split()
+                        if p not in _CATEGORIAS and p not in _RUIDO_TERMO]
             for p in palavras:
-                rows = [r for r in rows if p in _norm(f"{r['name']} {r['specs'] or ''}")]
+                # número solto casa por palavra inteira: "7 cordas" não pode trazer o
+                # Yamaha C70 nem o Kalani KAL-700T. O resto segue por substring, que é o
+                # que faz "spruce" achar "Spruce Sólido".
+                casa = ((lambda t: re.search(rf"\b{p}\b", t) is not None) if p.isdigit()
+                        else (lambda t: p in t))
+                rows = [r for r in rows if casa(_norm(f"{r['name']} {r['specs'] or ''}"))]
         return rows
 
     rows = _consulta(apenas_disponiveis)
@@ -401,6 +433,16 @@ def status_pedido(order_id: int, identificador: str) -> str:
         "Itens: " + "; ".join(f"{it['quantity']}x {it['produto']}" for it in itens),
         f"Valor total: {_brl(o['total_brl'])}  ·  Pagamento: {_pagamento(o['payment_method'])}",
     ]
+    # order_items.csv não guarda o preço unitário pago — v_pedido_item mostra o preço de
+    # TABELA de hoje. Em 2 dos 20 pedidos a soma não fecha com o total (houve desconto na
+    # venda). Sem este aviso o agente "confere" a conta e contradiz o próprio total.
+    soma_tabela = sum(it["quantity"] * it["preco_tabela"] for it in itens)
+    if abs(soma_tabela - o["total_brl"]) > 0.01:
+        linhas.append(
+            f"Atenção ao valor: a soma dos itens pelo preço de tabela de hoje daria "
+            f"{_brl(soma_tabela)}, mas o pedido foi fechado em {_brl(o['total_brl'])}. "
+            "Houve desconto aplicado na venda e o sistema não registra o preço unitário "
+            "pago — informe o VALOR TOTAL do pedido e não tente recalcular item a item.")
     if o["status"] == "cancelled":
         linhas.append(f"Motivo do cancelamento: {o['notes'] or 'não informado'}")
     if o["estimated_delivery"]:

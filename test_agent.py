@@ -3,9 +3,12 @@
 Cobre a lógica não-trivial: views do ETL, retrieval de política e as tools de dados
 (incluindo a verificação leve de identidade). Não exercita o LLM.
 """
+import re
 import sqlite3
+import unicodedata
+from datetime import date
 
-from config import DB_PATH
+from config import DATA_REFERENCE_DATE, DB_PATH, POLICIES_PATH, ROOT
 from tools import buscar_produtos, consultar_politica, detalhe_produto, status_pedido
 
 
@@ -36,7 +39,41 @@ def test_etl_views():
     assert q("SELECT COUNT(*) FROM v_produto WHERE disponivel=1")[0] == 61
     assert q("SELECT COUNT(*) FROM v_produto WHERE promo_ativa_pct IS NOT NULL")[0] == 4
 
+    # dinheiro normalizado no ETL: o CSV mistura int e decimal, o banco não
+    assert all(isinstance(v, float) for (v,) in conn.execute("SELECT price_brl FROM products"))
+    assert all(isinstance(v, float) for (v,) in conn.execute("SELECT total_brl FROM orders"))
+    assert q("SELECT price_brl FROM products WHERE product_id=95")[0] == 2199.0   # era int
+    assert q("SELECT price_brl FROM products WHERE product_id=81")[0] == 599.90   # era decimal
+
+    # ruído do dataset sintético: a descrição não pode citar marca diferente da do nome.
+    # O build_db.py corrige as 6 linhas; aqui checamos o resultado, não a regra.
+    for pid, marca_certa, marca_errada in ((135, "Music Man", "Fender"),
+                                           (137, "Yamaha", "Ibanez"),
+                                           (139, "Yamaha", "Pearl"),
+                                           (140, "Pearl", "Tama"),
+                                           (142, "Korg", "Roland"),
+                                           (144, "Roland", "Yamaha")):
+        desc = q("SELECT description FROM products WHERE product_id=?", pid)[0]
+        assert marca_errada not in desc, f"produto {pid} ainda cita {marca_errada}"
+        assert marca_certa in desc, f"produto {pid} perdeu a marca {marca_certa}"
+
     conn.close()
+
+
+def test_policies_sem_perda():
+    """policies.md é policies_raw.md curado à mão. Este check garante que a curadoria mexeu
+    em forma (headings, rodapé, tabelas) e não em conteúdo: todo número, percentual, valor
+    e e-mail do bruto tem que sobreviver no curado."""
+    def duros(texto: str) -> set[str]:
+        t = unicodedata.normalize("NFKD", texto)
+        t = "".join(c for c in t if not unicodedata.combining(c)).lower()
+        # pontuação de borda fora: "2.1." e "R$ 500,00." são o mesmo dado que "2.1"/"500,00"
+        return {tok.strip(".,;:") for tok in
+                re.findall(r"\d+[\d.,]*%?|[\w.+-]+@[\w.-]+", t)} - {""}
+
+    bruto = duros((ROOT / "policies_raw.md").read_text(encoding="utf-8"))
+    curado = duros(POLICIES_PATH.read_text(encoding="utf-8"))
+    assert not (bruto - curado), f"a curadoria perdeu: {sorted(bruto - curado)}"
 
 
 def test_consultar_politica():
@@ -48,6 +85,12 @@ def test_consultar_politica():
     assert call("quais as formas de pagamento?").startswith("## 3."), "pagamento -> seção 3"
     assert call("como rastreio meu envio?").startswith("## 5."), "rastreamento -> seção 5"
     assert call("qual a garantia do instrumento?").startswith("## 8."), "garantia -> seção 8 (não 4)"
+
+    # as 4 seções que faltavam: sem cobertura, a tabela de palavras-chave regride calada
+    assert call("as promoções são cumulativas?").startswith("## 6."), "promoção -> seção 6"
+    assert call("qual o whatsapp de vocês?").startswith("## 7."), "contato -> seção 7"
+    assert call("como excluo meus dados pessoais?").startswith("## 9."), "LGPD -> seção 9"
+    assert call("o que dizem as disposições finais?").startswith("## 10."), "disposições -> seção 10"
 
     # tópico não reconhecido -> mensagem de ajuda, não exceção
     assert "Assuntos cobertos" in call("qual a cor favorita do vendedor?")
@@ -84,6 +127,25 @@ def test_buscar_produtos():
     # categoria desconhecida: recusar em vez de descartar o filtro em silêncio (dava 20 ukuleles)
     assert "Não conheço a categoria" in buscar_produtos.invoke({"categoria": "fender"})
 
+    # --- busca por especificação (o músico que sabe o que quer) ---
+    # valor da spec casa direto; a chave em PT-BR é traduzida para o token do JSON
+    r7 = buscar_produtos.invoke({"termo": "61 teclas"})            # specs: "keys": "61"
+    assert r7.count("Teclado Sintetizador") == 3, r7
+    assert "Bateria" in buscar_produtos.invoke({"termo": "cascos maple"})   # "shells": "Maple"
+    assert "Gibson Les Paul" in buscar_produtos.invoke({"termo": "corpo mahogany"})  # "body"
+    assert "Yamaha FG800" in buscar_produtos.invoke({"termo": "tampo spruce solido"})
+
+    # conectivos ("de", "em", "com") não podem entrar no E lógico: "de" está dentro de
+    # "Fender" e casaria por substring, esvaziando o filtro sem avisar.
+    assert "Gibson Les Paul" in buscar_produtos.invoke({"termo": "guitarra com corpo em mahogany"})
+
+    # número solto casa por PALAVRA INTEIRA. Sem isso "7 cordas" trazia o Yamaha C70 e o
+    # Kalani KAL-700T, que têm "7" no meio do modelo e não são violões de 7 cordas.
+    r8 = buscar_produtos.invoke({"termo": "7 cordas", "apenas_disponiveis": False})
+    assert "C70" not in r8 and "KAL-700T" not in r8, r8
+    for nome in ("SN-7C", "TW-7", "GWNE-7", "RV-174", "RV-175"):
+        assert nome in r8, f"{nome} sumiu da busca por 7 cordas"
+
 
 def test_detalhe_produto():
     r = detalhe_produto.invoke({"nome_ou_id": "Takamine GD20"})
@@ -115,6 +177,24 @@ def test_status_pedido():
     assert "não posso liberar" in nao
 
     assert "Não encontrei" in status_pedido.invoke({"order_id": 999, "identificador": "x"})
+
+
+def test_total_do_pedido_diverge_da_soma():
+    """order_items.csv não tem preço unitário. Nos pedidos 3 e 20 a soma a preço de tabela
+    não fecha com o total (desconto na venda) — a tool tem que avisar em vez de deixar o
+    agente recalcular e contradizer o próprio total."""
+    conn = sqlite3.connect(DB_PATH)
+    email = lambda oid: conn.execute(
+        "SELECT c.email FROM orders o JOIN customers c USING(customer_id) "
+        "WHERE o.order_id = ?", [oid]).fetchone()[0]
+
+    for oid, soma in ((3, "R$ 3.498,00"), (20, "R$ 1.488,00")):
+        r = status_pedido.invoke({"order_id": oid, "identificador": email(oid)})
+        assert "Atenção ao valor" in r and soma in r, r
+    # pedido que fecha não pode ganhar o aviso
+    assert "Atenção ao valor" not in status_pedido.invoke(
+        {"order_id": 1, "identificador": email(1)})
+    conn.close()
 
 
 def test_identidade_nao_burlavel():
@@ -191,12 +271,19 @@ def test_agente_compila():
     assert len(TOOLS) == 4
 
 
-TESTS = [test_etl_views, test_consultar_politica, test_buscar_produtos,
+TESTS = [test_etl_views, test_policies_sem_perda, test_consultar_politica,
+         test_buscar_produtos, test_total_do_pedido_diverge_da_soma,
          test_detalhe_produto, test_status_pedido, test_identidade_nao_burlavel,
          test_poda_historico, test_agente_compila]
 
 
 def main():
+    # Os asserts de prazo ("há 79 dias") são calibrados nesta data. Sem esta guarda,
+    # um .env com outra data faz o teste falhar com cara de bug de código.
+    assert DATA_REFERENCE_DATE == date(2026, 3, 25), (
+        f"testes calibrados para DATA_REFERENCE_DATE=2026-03-25; seu .env tem "
+        f"{DATA_REFERENCE_DATE}")
+
     failed = 0
     for t in TESTS:
         try:

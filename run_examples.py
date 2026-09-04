@@ -69,7 +69,10 @@ def main() -> None:
                                    config={"configurable": {"thread_id": thread}})
             msgs = estado["messages"]
             for m in msgs[vistas:]:
-                bloco = _rotulo(m)
+                # `$` escapado: o GitHub e o Streamlit leem `$...$` como LaTeX, e os
+                # transcripts têm dois preços por linha. Vale para o texto do assistente
+                # e para o retorno das ferramentas, que também vem com "R$".
+                bloco = _rotulo(m).replace("$", "\\$")
                 if bloco:
                     blocos.append(bloco)
             vistas = len(msgs)
