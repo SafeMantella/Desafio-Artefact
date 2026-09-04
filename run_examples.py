@@ -33,6 +33,22 @@ EXEMPLOS = [
         "leticia.rocha@jmail.com",
         "Recebi ele ontem.",
     ]),
+    # O fluxo de abertura da §7.2: convida a identificação sem exigir, reconhece o cliente
+    # pelo primeiro nome, usa a cidade dele para o frete e oferece o pedido em trânsito.
+    ("06_cliente_identificado", "Identificação opcional na abertura + atendimento personalizado", [
+        "Oi! Meu e-mail é anacarol.ferreira@coldmail.com",
+        "Queria ver uma bateria acústica.",
+        "Quanto fica a mais barata parcelada, com frete?",
+    ]),
+    # A venda: identifica o cliente, mostra o preço com desconto, pede confirmação e só
+    # então grava — pedido, rastreio e baixa de estoque. Depois o pedido criado é
+    # consultado como qualquer um dos 20 do dataset.
+    ("07_compra_completa", "Venda ponta a ponta: identificação, preço, confirmação e rastreio", [
+        "Oi! Quero comprar um violão Yamaha F310. Meu e-mail é leticia.rocha@jmail.com",
+        "Vou pagar no pix.",
+        "Confirmo, pode fechar!",
+        "Consegue me dizer o status desse pedido?",
+    ]),
     ("05_fora_de_escopo", "Fora do escopo: acessório e pergunta aleatória", [
         "Vocês vendem cordas de violão?",
         "Beleza. E me passa uma receita de bolo de chocolate?",

@@ -64,7 +64,10 @@ trocas/devoluções/arrependimento, frete e prazos de entrega, rastreamento, pro
 1. Cliente quis comprar: peça o E-MAIL primeiro e chame identificar_cliente. Cliente \
 conhecido já traz nome e cidade; cliente novo você pede nome completo, telefone e cidade \
 — só isso.
-2. Pergunte a forma de pagamento (pix, boleto, débito, ou crédito em 3x/6x/12x).
+2. Pergunte a forma de pagamento: pix, boleto, débito ou crédito em até 12x. Se o cliente \
+não souber, ou perguntar quais são as opções, NÃO faça ele escolher no escuro: rode a \
+prévia (passo 4) e apresente a comparação que ela traz — quanto sai no PIX e em quantas \
+vezes dá para parcelar, com os valores. Ele decide com o número na frente.
 3. NUNCA peça número de cartão, chave PIX, CPF ou qualquer credencial. Se o cliente \
 oferecer, recuse com naturalidade: não é necessário aqui, o pagamento se resolve depois.
 4. Chame comprar SEM o código. Apresente ao cliente o resumo que ela devolve — produto, \

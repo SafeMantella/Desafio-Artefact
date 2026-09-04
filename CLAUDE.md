@@ -34,6 +34,8 @@ Entregáveis: repo público + `README.md` (setup + justificativas + limitações
 | 5 | Histórico de conversa | Checkpointer **`SqliteSaver`** do LangGraph, por `thread_id` + poda com `trim_messages` no `pre_model_hook` | Persiste entre execuções, reaproveita o SQLite. Persistir tudo ≠ reenviar tudo: `MAX_HISTORY_TOKENS` (8000) evita estourar a janela do modelo local em conversa longa. |
 | 6 | Identificação do cliente | `status_pedido`: número do pedido + **e-mail exato** (normalizado). Nome não serve. `_identidade_confere` em `tools.py`; `test_identidade_nao_burlavel` varre os 20 pedidos | LGPD sem auth. v1 (substring) e v2 (agregação) eram burláveis 100%/70%; v3 (nome + 2 partes) resistia a spray mas deixava 3 pares colidirem. v4 troca a heurística inteira por uma comparação de string: apaga o resíduo e não tem como regredir. Trade-off: menos amigável, é o que e-commerce real pede. |
 | 7 | Interface | **Streamlit** | Chat web pra demo; `thread_id` em `st.session_state`. |
+| 9 | Identificação do cliente | `identificar_cliente(email)` na saudação — **convite, não exigência**. 3 estados: novo / cadastrado sem compra (32 de 50) / com pedidos | §7.2 manda cumprimentar pelo nome "se disponível". Exigir e-mail para responder horário coleta PII sem finalidade (§9). Cidade alimenta o frete; pedido em trânsito vira oferta de rastreio. Identificar ≠ autenticar: conteúdo de pedido só pelo `status_pedido`. |
+| 10 | Compra (mock) | `comprar` em 2 passos (prévia + código de confirmação por hash) e `cancelar_pedido`. Escreve em `orders`, `order_items`, `customers` e baixa estoque | O banco deixa de ser só leitura, e só aqui. O LLM continua sem gerar SQL. O hash impede gravar sem ter mostrado o preço. ZERO dado de pagamento: só o rótulo do método. `build_db.py --reset` volta ao canônico; sem a flag, preserva o delta. |
 | 8 | Modelo / provedor | **LM Studio** local; código agnóstico (base_url + nome via `.env`) | Sem custo, offline, PII não sai da máquina. `temperature=0` (Parte 10) para o eval medir o modelo, não o sampler. Números da última rodada: `eval_report.md`. |
 
 **Defaults assumidos** (documentados no README):
@@ -54,8 +56,9 @@ build_db.py        ETL: os 6 CSVs de data/ → emporio.db (tabelas + views)   [P
 convert_policies.py  PDF de políticas → policies_raw.md (pymupdf4llm)         [Parte 2]
 policies_raw.md    saída bruta da conversão (artefato reproduzível)          [Parte 2]
 policies.md        policies_raw.md curado (headings limpos, divergências resolvidas) — usado pelo agente  [Parte 2]
-tools.py           as 5 tools LangChain (buscar_produtos, detalhe_produto,
-                   status_pedido, consultar_politica, simular_pagamento)      [Partes 2-3, 11]
+tools.py           as 8 tools LangChain (buscar_produtos, detalhe_produto,
+                   status_pedido, consultar_politica, simular_pagamento,
+                   identificar_cliente, comprar, cancelar_pedido)   [Partes 2-3, 11-12]
 prompts.py         system prompt / persona / regras                         [Parte 4]
 agent.py           monta o ReAct agent + checkpointer                       [Parte 4]
 app.py             Streamlit                                                [Parte 5]
@@ -137,7 +140,9 @@ pendência da Parte 10 e achou o balão vazio no chat (`AIMessage` com `content=
 ## 7. Convenções
 
 - Tudo em **PT-BR** (código, mensagens, docs).
-- SQL **sempre parametrizado**, nunca gerado pelo LLM.
+- SQL **sempre parametrizado**, nunca gerado pelo LLM. O banco é só leitura, **exceto**
+  no caminho da compra confirmada (`comprar` / `cancelar_pedido`).
+- **Nunca** coletar dado de pagamento (cartão, chave PIX, CPF) — nem no mock de compra.
 - Regras de política vivem no **texto** (`policies.md`), não hard-coded (exceção: cálculos
   auxiliares como `dias_desde_pedido`, que a tool entrega pronto pro agente comparar).
 - Trabalhar **por partes** (CHECKLIST), 1 commit por parte, sem force-push.

@@ -335,9 +335,24 @@ def test_ciclo_de_compra():
     assert "não confere" in cmp(codigo_de_confirmacao="DEADBEEF")  # código inventado
     assert (estoque(F310), n_pedidos()) == (estoque0, pedidos0), "algo gravou sem confirmar"
 
-    # prévia: mostra o preço e NÃO grava
+    # forma de pagamento: parser, não lista de frases. A §3.1 permite QUALQUER parcelamento
+    # até 12x — a primeira versão só aceitava 3x/6x/12x (os valores do dataset) e recusava
+    # 5x, que é legítimo. Quem recusa é a parcela mínima da faixa, não a lista.
+    from tools import _forma_de_pagamento as fp
+    assert fp("crédito em 5x") == fp("cartão 5x") == fp("parcelado em 5 vezes") == "credit_5x"
+    assert fp("cartão de débito") == "debit" and fp("pix") == "pix"
+    assert fp("em 13x") is None and fp("dinheiro vivo") is None   # acima do teto da §3.1
+    assert "PRÉVIA" in cmp(forma_de_pagamento="crédito em 5x")     # 1399,80/5 = 279,96 >= 80
+    # parcela abaixo do mínimo é recusada com o teto REAL, não com um 'não'
+    baixo = comprar.invoke({"produto": "Kala KA-15S", "quantidade": 1, "email": EMAIL,
+                            "forma_de_pagamento": "12x"})
+    assert "o máximo é 3x" in baixo, baixo
+
+    # prévia: mostra o preço, COMPARA as formas e NÃO grava
     previa = cmp()
     assert "PRÉVIA" in previa and "R$ 1.329,81" in previa, previa   # 2x699,90 -5% PIX
+    # o cliente não escolhe a forma de pagamento no escuro: a prévia traz a alternativa
+    assert "Outras formas" in previa and "12x sem juros" in previa, previa
     assert (estoque(F310), n_pedidos()) == (estoque0, pedidos0), "a prévia gravou"
     codigo = re.search(r"codigo_de_confirmacao='([A-Z0-9]+)'", previa).group(1)
 

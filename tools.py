@@ -620,13 +620,27 @@ def identificar_cliente(email: str) -> str:
 # RÓTULO do método, que é o que a coluna orders.payment_method já contém. `_parece_credencial`
 # recusa qualquer coisa que chegue parecendo número de cartão.
 
-_PAGAMENTOS = {"pix": "pix", "debito": "debit", "débito": "debit", "debit": "debit",
-               "boleto": "boleto", "cartao de debito": "debit", "cartão de débito": "debit"}
-for _n in (3, 6, 12):                     # crédito parcelado, como o dataset grava
-    _PAGAMENTOS[f"credit_{_n}x"] = f"credit_{_n}x"
-    _PAGAMENTOS[f"credito {_n}x"] = f"credit_{_n}x"
-    _PAGAMENTOS[f"cartao {_n}x"] = f"credit_{_n}x"
-    _PAGAMENTOS[f"{_n}x"] = f"credit_{_n}x"
+def _forma_de_pagamento(texto: str) -> str | None:
+    """O que o cliente falou -> o rótulo que orders.payment_method usa.
+
+    Parser em vez de tabela de variações: "crédito em 5x", "cartão 5x", "parcelado em 5
+    vezes" e "5x" são a mesma coisa, e enumerar as frases é uma lista que sempre falta uma.
+    O número de parcelas é livre até o teto da §3.1 — quem recusa não é esta função, é a
+    parcela mínima da faixa, conferida depois com o valor na mão.
+    """
+    t = _norm(texto)
+    if "pix" in t:
+        return "pix"
+    if "boleto" in t:
+        return "boleto"
+    if "debito" in t:
+        return "debit"
+    m = re.search(r"(\d+)\s*(?:x|vezes|parcelas)", t)
+    if m or "credito" in t or "cartao" in t:
+        n = int(m.group(1)) if m else 1
+        return f"credit_{n}x" if 1 <= n <= _FAIXAS_PARCELAMENTO[-1][0] else None
+    return None
+
 
 MAX_UNIDADES = 10   # teto de sanidade: erro de digitação do modelo não compra 999
 
@@ -703,10 +717,10 @@ def comprar(produto: str, quantidade: int, email: str, forma_de_pagamento: str,
         return ("Não trabalho com dados de pagamento: não me passe número de cartão, chave PIX "
                 "nem CPF. Diga só a FORMA (pix, boleto, débito ou crédito em Nx) — o pagamento "
                 "é combinado depois, fora do chat.")
-    forma = _PAGAMENTOS.get(_norm(forma_de_pagamento))
+    forma = _forma_de_pagamento(forma_de_pagamento)
     if not forma:
-        return ("Forma de pagamento não reconhecida. As aceitas são: pix, boleto, débito, ou "
-                "crédito em 3x, 6x ou 12x. Confirme com o cliente qual ele prefere.")
+        return (f"Forma de pagamento não reconhecida. As aceitas são: pix, boleto, débito, "
+                f"ou crédito de 1x a {_FAIXAS_PARCELAMENTO[-1][0]}x. Confirme com o cliente.")
     try:
         qtd = int(quantidade)
     except (TypeError, ValueError):
@@ -752,6 +766,18 @@ def comprar(produto: str, quantidade: int, email: str, forma_de_pagamento: str,
 
     cidade_final = cli["city"] if cli else cidade
     orc = _orcamento(prod, qtd, forma, cidade_final)
+    # §3.1: o número de parcelas é livre até o teto, mas cada faixa tem parcela mínima.
+    # Só dá para conferir aqui, com o total calculado.
+    mx = re.fullmatch(r"credit_(\d+)x", forma)
+    if mx and int(mx.group(1)) > 1:
+        n_pedido = int(mx.group(1))
+        n_max, _ = _max_parcelas(orc["total"])
+        if n_pedido > n_max:
+            return (f"Em {n_pedido}x a parcela ficaria {_brl(orc['total'] / n_pedido)}, abaixo "
+                    f"do mínimo que a política permite para essa faixa. Para "
+                    f"{_brl(orc['total'])}, o máximo é {n_max}x de "
+                    f"{_brl(orc['total'] / n_max)}. Ofereça isso ao cliente.")
+
     codigo = _codigo(prod["product_id"], qtd, _norm(email), forma, orc["total"])
 
     if not codigo_de_confirmacao:
@@ -772,6 +798,18 @@ def comprar(produto: str, quantidade: int, email: str, forma_de_pagamento: str,
         linhas += [
             f"TOTAL: {_brl(orc['total'])}  ·  Pagamento: {_pagamento(forma)}",
             f"Cliente: {cli['name'] if cli else nome} ({email})",
+        ]
+        # o cliente não deve escolher a forma de pagamento às cegas: mostre o que cada
+        # caminho custa, com número, antes de ele confirmar.
+        alt_pix = _orcamento(prod, qtd, "pix", cidade_final)["total"]
+        n_max, parcela = _max_parcelas(_orcamento(prod, qtd, "credit_12x", cidade_final)["total"])
+        linhas += [
+            "",
+            "Outras formas, para o cliente comparar:",
+            f"- PIX à vista: {_brl(alt_pix)}"
+            + ("" if prod["promo_ativa_pct"] else " (5% de desconto sobre a tabela)"),
+            f"- Cartão de crédito: até {n_max}x sem juros de {_brl(parcela)}"
+            if n_max > 1 else "- Cartão de crédito: só à vista neste valor",
             "",
             f"Para confirmar, chame comprar de novo com os MESMOS argumentos e "
             f"codigo_de_confirmacao='{codigo}' — mas só depois que o cliente disser sim.",
