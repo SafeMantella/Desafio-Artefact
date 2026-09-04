@@ -171,5 +171,13 @@ dado real, veredito dele, implementação por fase com um commit por fase.
 - [x] itens 2, 3, 6, 8, 11 — README: armadilhas dos dados, uma busca = uma chamada,
       conta de preço, por que não `date.today()`, limitação de hardware / usuário único
 - [x] item 4 — decidido NÃO: `data/` são fixtures, sem elas o repo não é reproduzível
-- [ ] **Pedro, com LM Studio:** `python run_examples.py` (o exemplo 04 ainda identifica por
-      nome) e `python test_live.py` (relatório versionado ainda descreve 20 casos)
+- [x] `run_examples.py` e `test_live.py` rodados: **29/29 em 3 rodadas**, `eval_report.md` e
+      os 5 exemplos regerados. A execução achou 3 bugs de código e 2 falhas reais do agente
+      que nenhum caso escrito na mesa tinha pego (ver commits `e4c31fb` e `fe6e5a5`).
+- [x] **Streamlit validado ao vivo** (fecha a pendência da Parte 10): 28 turnos numa thread,
+      retomada por `thread_id`, escape do `$` conferido no renderizador real, e a poda
+      rodada contra o histórico REAL (71 msgs, 14 tool calls) — zero `ToolMessage` órfã em
+      todos os tetos. Achou e fechou o balão vazio no chat: `AIMessage` com `content='\n\n'`
+      é truthy e passava no filtro `if m.content`.
+- [ ] opcional: regra de prompt para o agente não atribuir ao interlocutor o e-mail do
+      cliente do pedido ("Nome: Pedro / E-mail cadastrado: leticia.rocha@…")

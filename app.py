@@ -37,8 +37,10 @@ def _historico(agente, thread_id: str) -> list:
     """Mensagens já persistidas para este thread (para retomar conversa após reabrir o app)."""
     estado = agente.get_state({"configurable": {"thread_id": thread_id}})
     msgs = estado.values.get("messages", []) if estado.values else []
-    return [("user" if isinstance(m, HumanMessage) else "assistant", m.content)
-            for m in msgs if isinstance(m, (HumanMessage, AIMessage)) and m.content]
+    # `.strip()` no filtro, não só `if m.content`: quando o modelo chama uma ferramenta ele
+    # emite um AIMessage com content="\n\n", que é truthy e virava um balão VAZIO no chat.
+    return [("user" if isinstance(m, HumanMessage) else "assistant", m.content.strip())
+            for m in msgs if isinstance(m, (HumanMessage, AIMessage)) and m.content.strip()]
 
 
 st.title("🎸 melodIA · Empório da Música")

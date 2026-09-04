@@ -60,7 +60,9 @@ def responder(agente, mensagem: str, thread_id: str) -> str:
     )
     log.info("turno thread=%s %.1fs (%d mensagens no histórico)",
              thread_id, time.perf_counter() - t0, len(estado["messages"]))
-    return estado["messages"][-1].content
+    # .strip(): o modelo abre toda resposta com "\n\n", o que vira linha em branco no topo
+    # de cada balão do chat.
+    return estado["messages"][-1].content.strip()
 
 
 if __name__ == "__main__":

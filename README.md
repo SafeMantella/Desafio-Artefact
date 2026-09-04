@@ -337,6 +337,15 @@ modelo real: 42 turnos até o corte disparar, mais um anexo com corte profundo (
 mensagens descartadas) — em nenhum dos dois a API recusou o request, e o agente seguiu chamando
 a ferramenta certa.
 
+**Quando o corte começa depende do modelo.** Numa validação de 28 turnos pela interface do
+Streamlit, com um modelo mais verboso, o histórico cresceu ~340 tokens por turno: 5.100 aos
+15 turnos e 9.600 aos 28, em 94 mensagens com 14 chamadas de ferramenta. Nesse ritmo o padrão
+de 8.000 só passa a cortar por volta do 23º turno — contra os 42 da validação acima. Rodando
+`_podar` sobre esse histórico real com tetos menores (4.000 e 1.000), ele corta de 71 para 35
+e para 11 mensagens, sempre dentro do teto e **sempre sem `ToolMessage` órfã**. A conclusão
+prática: o número de turnos que cabe não é uma propriedade do agente, é do modelo — por isso
+o teto é configurável e a verificação de órfã é o que realmente trava o bug.
+
 ### 8. Interface — Streamlit
 
 Chat web pronto em poucas linhas, bom para a demonstração e para gerar os exemplos. O
@@ -401,7 +410,9 @@ cotação. Uma tool que só reimprimisse a §5 seria uma segunda porta para a me
   por processo, o checkpointer abre **uma** conexão SQLite (`check_same_thread=False`) e o
   LM Studio atende um request por vez. Duas pessoas simultâneas disputam os três. O
   isolamento existente é por `thread_id`, não por sessão nem por usuário — não há noção de
-  quem está falando. Multiusuário de verdade pede modelo servido à parte, pool de conexões
+  quem está falando. Dois processos escrevendo a mesma `thread_id` ao mesmo tempo intercalam
+  turnos no histórico (visto na validação, mandando mensagem pela UI enquanto um script
+  escrevia na mesma thread): não corrompe o checkpoint, mas a conversa sai fora de ordem. Multiusuário de verdade pede modelo servido à parte, pool de conexões
   e sessão autenticada; nada disso é difícil, mas nenhum deles cabia no hardware desta demo.
 - **O histórico cresce sem TTL.** O `SqliteSaver` grava o estado inteiro a cada passo do
   grafo: depois das conversas de teste, o `emporio.db` estava com 95 MB e 1.905 checkpoints

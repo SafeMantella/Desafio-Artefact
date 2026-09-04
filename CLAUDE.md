@@ -99,8 +99,9 @@ total×soma no `status_pedido`; identidade só por e-mail; tool `simular_pagamen
 constantes conferidas contra `policies.md`; busca por especificação (`_SPECS_PT`); eval de
 20 → 29 casos; testes 8 → 11.
 
-Pendências (Pedro, precisam do LM Studio): regerar `examples/` e `eval_report.md`; validar
-o Streamlit ao vivo com conversa de 15+ turnos.
+Tudo rodado: `test_agent.py` 11/11, `test_live.py` 29/29 em 3 rodadas, `examples/` e
+`eval_report.md` regerados, e o Streamlit validado ao vivo em 28 turnos — o que fecha a
+pendência da Parte 10 e achou o balão vazio no chat (`AIMessage` com `content='\n\n'`).
 
 ## 6. Armadilhas dos dados (descobertas na exploração)
 
