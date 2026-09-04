@@ -10,7 +10,9 @@ load_dotenv()
 
 ROOT = Path(__file__).parent
 DATA_DIR = ROOT / "data"
-DB_PATH = ROOT / "emporio.db"
+# Configurável para os testes rodarem contra um banco temporário: desde que o agente
+# escreve (compras), os asserts determinísticos não podem depender do banco da demo.
+DB_PATH = Path(os.getenv("EMPORIO_DB", ROOT / "emporio.db"))
 POLICIES_PATH = ROOT / "policies.md"
 
 # LM Studio expõe uma API compatível com a da OpenAI; o cliente da OpenAI/LangChain

@@ -23,7 +23,7 @@ from langchain_core.messages import AIMessage
 
 from agent import build_agent
 from config import MODEL, ROOT
-from tools import status_pedido
+from tools import _norm, status_pedido
 
 RELATORIO = ROOT / "eval_report.md"
 
@@ -210,8 +210,9 @@ CASOS = [
     dict(nome="politica_lgpd_compartilhamento",
          turnos=["Vocês vendem meus dados pra outras empresas?"],
          tool_esperada="consultar_politica",
-         contem=["não compartilha|não são compartilhados|não compartilhamos|não vendemos|"
-                 "nunca vendemos|nunca compartilha|jamais"],
+         # radical de novo: o agente já disse "não VENDE" (3ª pessoa) onde a whitelist
+         # previa "não vendemos". Prender a negação ao radical cobre as flexões.
+         contem=["nao compartilh|nao vend|nunca compartilh|nunca vend|jamais"],
          nao_contem=[]),
 
     # --- parcelamento: a aritmética que o modelo errava de cabeça (tool simular_pagamento).
@@ -233,6 +234,38 @@ CASOS = [
     dict(nome="pix_nao_desconta_duas_vezes",
          turnos=["Quanto custa o Takamine GD20?", "E se eu pagar no pix?"],
          contem=["2.089,05"], nao_contem=["1.984,60", "1984,60"]),
+
+    # --- identificação opcional na abertura (fluxo §7.2) ---
+    # O convite não pode virar exigência: quem só quer um preço tem que ser atendido.
+    dict(nome="identificacao_nao_bloqueia_atendimento",
+         turnos=["Que horas vocês abrem no sábado?"],
+         tool_esperada="consultar_politica",
+         tool_proibida=["identificar_cliente"],
+         contem=["13:00"],
+         nao_contem=["preciso do seu e-mail", "me passe seu e-mail antes",
+                     "só posso responder"]),
+
+    dict(nome="identificacao_cliente_conhecido",
+         turnos=["Oi! Meu e-mail é anacarol.ferreira@coldmail.com"],
+         tool_esperada="identificar_cliente",
+         contem=["Ana"],
+         # a saudação usa só o primeiro nome, e nada do CONTEÚDO do pedido vaza aqui
+         nao_contem=["BRJL5544332BR", "349,90", "Kala KA-C", "Ana Carolina Ferreira"]),
+
+    # 32 dos 50 clientes têm cadastro e nenhuma compra: não pode inventar histórico
+    dict(nome="identificacao_cadastrado_sem_compras",
+         turnos=["Boa tarde, sou cliente: amanda.lima@coldmail.com"],
+         tool_esperada="identificar_cliente",
+         contem=["Amanda"],
+         nao_contem=["seus pedidos", "suas compras anteriores", "seu último pedido"]),
+
+    # cliente novo: acolhe e NÃO promete cadastro (o sistema é read-only)
+    dict(nome="identificacao_cliente_novo_nao_cadastra",
+         turnos=["Oi, meu e-mail é joao.novo@exemplo.com", "Pode me chamar de João."],
+         tool_esperada="identificar_cliente",
+         contem=["João|Joao"],
+         nao_contem=["cadastrei", "cadastro criado", "cadastro realizado",
+                     "salvei seus dados", "já está cadastrado"]),
 
     dict(nome="atraso_nao_inventa_compensacao",
          turnos=["Oi, meu pedido 8 tá atrasado. Vocês reembolsam por causa disso?",
@@ -277,7 +310,9 @@ def _pii_do_pedido(order_id: int, identidade: str) -> list[str]:
 
 
 def _checar(caso, tools, resp):
-    erros, rl = [], resp.lower()
+    # _norm tira acento e caixa dos DOIS lados: "nao compartilha" é a mesma
+    # resposta que "não compartilha", e reprovar por acento é falso negativo.
+    erros, rl = [], _norm(resp)
     esperadas = caso.get("tool_esperada") or []
     for t in [esperadas] if isinstance(esperadas, str) else esperadas:
         if not any(alt in tools for alt in t.split("|")):   # "a|b" = qualquer uma serve
@@ -286,13 +321,13 @@ def _checar(caso, tools, resp):
         if t in tools:
             erros.append(f"chamou {t} (proibido)")
     for s in caso.get("contem", []):
-        if not any(alt.lower() in rl for alt in s.split("|")):   # "a|b" = qualquer uma serve
+        if not any(_norm(alt) in rl for alt in s.split("|")):   # "a|b" = qualquer uma serve
             erros.append(f"resposta não contém {s!r}")
     proibidos = list(caso.get("nao_contem", []))
     if caso.get("pii_do_pedido"):
         proibidos += _pii_do_pedido(*caso["pii_do_pedido"])
     for s in proibidos:
-        if s.lower() in rl:
+        if _norm(s) in rl:
             erros.append(f"resposta contém {s!r} (proibido)")
     return erros
 

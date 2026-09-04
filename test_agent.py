@@ -1,15 +1,26 @@
 """Checks assert-based, sem framework. Rode:  python test_agent.py
 
+Roda contra um banco TEMPORÁRIO, construído dos CSVs a cada execução. Desde que o agente
+escreve (compras baixam estoque e criam pedidos), asserts como "20 pedidos" ou "61
+disponíveis" não podem depender do banco da demo. EMPORIO_DB precisa estar no ambiente
+ANTES de importar config/tools, porque config lê a variável no import.
+
 Cobre a lógica não-trivial: views do ETL, retrieval de política e as tools de dados
 (incluindo a verificação leve de identidade). Não exercita o LLM.
 """
+import os
 import re
 import sqlite3
+import tempfile
+from pathlib import Path
 import unicodedata
 from datetime import date
 
-from config import DATA_REFERENCE_DATE, DB_PATH, POLICIES_PATH, ROOT
-from tools import buscar_produtos, consultar_politica, detalhe_produto, status_pedido
+os.environ.setdefault("EMPORIO_DB", str(Path(tempfile.gettempdir()) / "emporio_test.db"))
+
+from config import DATA_REFERENCE_DATE, DB_PATH, POLICIES_PATH, ROOT  # noqa: E402
+from tools import (buscar_produtos, cancelar_pedido, comprar, consultar_politica,  # noqa: E402
+                   detalhe_produto, status_pedido)
 
 
 def test_etl_views():
@@ -231,6 +242,36 @@ def test_identidade_nao_burlavel():
         assert not _identidade_confere(email.split("@")[0], email), "usuário sem domínio"
 
 
+def test_identificar_cliente():
+    """Personaliza, não autentica: os 4 estados e o limite do que ela pode revelar."""
+    from tools import identificar_cliente
+    ic = lambda e: identificar_cliente.invoke({"email": e})
+
+    # cadastrado COM pedido em trânsito (pedido 8, shipped)
+    r = ic("anacarol.ferreira@coldmail.com")
+    assert "Ana" in r and "Campo Grande" in r and "pedido 8" in r, r
+    # o NÚMERO do pedido pode aparecer (order_id é sequencial 1-20, então quem tem o
+    # e-mail já podia enumerar no status_pedido — o e-mail sempre foi o fator único).
+    # O CONTEÚDO do pedido, não: isso continua exclusivo do status_pedido.
+    for sigilo in ("BRJL5544332BR", "349,90", "Kala KA-C", "28/02/2026"):
+        assert sigilo not in r, f"identificar_cliente vazou {sigilo!r}"
+
+    # cadastrado SEM pedido — 32 dos 50 clientes; não pode inventar histórico
+    r2 = ic("amanda.lima@coldmail.com")
+    assert "Amanda" in r2 and "NÃO tem nenhum pedido" in r2 and "Dourados" in r2, r2
+
+    # não cadastrado -> cliente novo, e a tool proíbe prometer cadastro
+    r3 = ic("naoexiste@exemplo.com")
+    assert "CLIENTE NOVO" in r3 and "não cadastra" in r3, r3
+
+    # não é e-mail -> não insiste (a identificação é opcional)
+    assert "opcional" in ic("Letícia Gonçalves Rocha")
+
+    # e-mail sozinho continua NÃO abrindo pedido de outra pessoa
+    assert "não posso liberar" in status_pedido.invoke(
+        {"order_id": 8, "identificador": "leticia.rocha@jmail.com"})
+
+
 def test_simular_pagamento():
     """Duas coisas: a conta, e a DUPLICAÇÃO.
 
@@ -270,6 +311,101 @@ def test_simular_pagamento():
     assert "R$ 323,10" in promo and "R$ 306,94" not in promo, promo
 
 
+def test_ciclo_de_compra():
+    """Venda ponta a ponta: prévia -> confirmação -> pedido rastreável -> cancelamento.
+
+    É o único caminho que ESCREVE no banco, então o teste cobre as duas coisas: que a
+    venda acontece por inteiro, e que ela NÃO acontece sem passar pela confirmação.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    estoque = lambda pid: conn.execute(
+        "SELECT stock_quantity FROM products WHERE product_id=?", [pid]).fetchone()[0]
+    n_pedidos = lambda: conn.execute("SELECT COUNT(*) FROM orders").fetchone()[0]
+    F310, EMAIL = 87, "leticia.rocha@jmail.com"
+    estoque0, pedidos0 = estoque(F310), n_pedidos()
+
+    cmp = lambda **kw: comprar.invoke({"produto": "Yamaha F310", "quantidade": 2,
+                                       "email": EMAIL, "forma_de_pagamento": "pix", **kw})
+
+    # dado de pagamento nunca entra: nem cartão, nem chave, nem CPF
+    assert "não me passe" in cmp(forma_de_pagamento="cartao 4111 1111 1111 1111")
+    # guardas de negócio
+    assert "Estoque insuficiente" in cmp(quantidade=9999) or "fora do permitido" in cmp(quantidade=9999)
+    assert "não pode ser vendido" in cmp(produto="113")            # discontinued
+    assert "não confere" in cmp(codigo_de_confirmacao="DEADBEEF")  # código inventado
+    assert (estoque(F310), n_pedidos()) == (estoque0, pedidos0), "algo gravou sem confirmar"
+
+    # prévia: mostra o preço e NÃO grava
+    previa = cmp()
+    assert "PRÉVIA" in previa and "R$ 1.329,81" in previa, previa   # 2x699,90 -5% PIX
+    assert (estoque(F310), n_pedidos()) == (estoque0, pedidos0), "a prévia gravou"
+    codigo = re.search(r"codigo_de_confirmacao='([A-Z0-9]+)'", previa).group(1)
+
+    # confirmação: grava tudo numa vez só
+    ok = cmp(codigo_de_confirmacao=codigo)
+    pedido = int(re.search(r"Número do pedido: (\d+)", ok).group(1))
+    assert estoque(F310) == estoque0 - 2, "estoque não baixou pela quantidade exata"
+    assert n_pedidos() == pedidos0 + 1
+    rastreio = re.search(r"rastreio: (\S+)", ok).group(1)
+    assert re.fullmatch(r"BR[A-Z0-9]{9}BR", rastreio), f"formato §5.3 quebrado: {rastreio}"
+
+    # o pedido novo se comporta como os 20 do dataset
+    achado = status_pedido.invoke({"order_id": pedido, "identificador": EMAIL})
+    assert f"Pedido {pedido}" in achado and rastreio in achado and "1.329,81" in achado
+    assert "não posso liberar" in status_pedido.invoke(
+        {"order_id": pedido, "identificador": "outro@email.com"})
+
+    # cliente conhecido não vira cadastro duplicado
+    assert conn.execute("SELECT COUNT(*) FROM customers WHERE LOWER(email)=?",
+                        [EMAIL]).fetchone()[0] == 1
+
+    # cliente novo: a tool diz exatamente o que falta, e só cadastra na compra confirmada
+    novo = dict(produto="Yamaha C40", quantidade=1, email="zezinho@exemplo.com",
+                forma_de_pagamento="boleto")
+    faltam = comprar.invoke(novo)
+    assert "nome completo" in faltam and "telefone" in faltam and "cidade" in faltam
+    novo |= dict(nome="Zezinho da Silva", telefone="(67) 99999-0000", cidade="Dourados")
+    prev2 = comprar.invoke(novo)
+    assert "PRÉVIA" in prev2
+    assert conn.execute("SELECT COUNT(*) FROM customers WHERE email=?",
+                        ["zezinho@exemplo.com"]).fetchone()[0] == 0, "prévia criou cadastro"
+    comprar.invoke(novo | {"codigo_de_confirmacao":
+                           re.search(r"codigo_de_confirmacao='([A-Z0-9]+)'", prev2).group(1)})
+    assert conn.execute("SELECT COUNT(*) FROM customers WHERE email=?",
+                        ["zezinho@exemplo.com"]).fetchone()[0] == 1
+
+    # cancelamento devolve o estoque ao valor de antes da compra
+    assert "não confere" in cancelar_pedido.invoke(
+        {"order_id": pedido, "email": "outro@email.com"})
+    assert "cancelado" in cancelar_pedido.invoke(
+        {"order_id": pedido, "email": EMAIL, "motivo": "desistiu"})
+    assert estoque(F310) == estoque0, "cancelar não devolveu o estoque"
+    assert "já está cancelado" in cancelar_pedido.invoke({"order_id": pedido, "email": EMAIL})
+    # pedido entregue não é cancelamento, é devolução — e o prazo conta do recebimento
+    r = cancelar_pedido.invoke({"order_id": 1, "email": "pedro.oliveira@jmail.com"})
+    assert "devolução" in r and "recebeu" in r, r
+
+    # o build preserva o que o agente criou e é IDEMPOTENTE. O estoque é recomputado a
+    # partir dos pedidos vivos: descontar de novo um pedido CANCELADO encolhia o estoque
+    # a cada build (bug real, visto aqui).
+    import build_db
+    conn.close()
+    build_db.main()
+    conn = sqlite3.connect(DB_PATH)
+    assert n_pedidos() == pedidos0 + 2, "o build não preservou os pedidos criados"
+    assert estoque(F310) == estoque0, "build descontou pedido cancelado"
+    depois = (n_pedidos(), estoque(F310))
+    conn.close()
+    build_db.main()
+    conn = sqlite3.connect(DB_PATH)
+    assert (n_pedidos(), estoque(F310)) == depois, "dois builds seguidos divergiram"
+
+    build_db.main(reset=True)
+    conn = sqlite3.connect(DB_PATH)
+    assert n_pedidos() == pedidos0 and estoque(F310) == estoque0, "--reset não limpou"
+    conn.close()
+
+
 def test_poda_historico():
     """Conversa longa não pode estourar a janela nem deixar ToolMessage órfã (a API recusa)."""
     from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -294,21 +430,29 @@ def test_poda_historico():
 
 
 def test_agente_compila():
-    """O grafo monta, as 5 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
+    """O grafo monta, as 8 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
     from agent import build_agent
     from tools import TOOLS
     a = build_agent()
     assert a.__class__.__name__ == "CompiledStateGraph"
-    assert len(TOOLS) == 5
+    assert len(TOOLS) == 8
 
 
 TESTS = [test_etl_views, test_policies_sem_perda, test_consultar_politica,
          test_buscar_produtos, test_total_do_pedido_diverge_da_soma,
          test_detalhe_produto, test_status_pedido, test_identidade_nao_burlavel,
-         test_simular_pagamento, test_poda_historico, test_agente_compila]
+         test_simular_pagamento, test_identificar_cliente,
+         test_ciclo_de_compra, test_poda_historico, test_agente_compila]
 
 
 def main():
+    # banco limpo dos CSVs a cada execução: os testes de compra escrevem, e o resto
+    # afirma contagens que só valem no estado canônico.
+    import build_db
+    Path(DB_PATH).unlink(missing_ok=True)
+    build_db.main(reset=True)
+    print(f"(banco de teste: {DB_PATH})\n")
+
     # Os asserts de prazo ("há 79 dias") são calibrados nesta data. Sem esta guarda,
     # um .env com outra data faz o teste falhar com cara de bug de código.
     assert DATA_REFERENCE_DATE == date(2026, 3, 25), (

@@ -5,12 +5,15 @@
 - detalhe_produto(nome_ou_id)                     -> ficha de um produto (Parte 3)
 - status_pedido(order_id, identificador)          -> pedido, com verificação leve (Parte 3)
 """
+import hashlib
 import json
+import random
 import re
 import sqlite3
+import string
 import unicodedata
 from contextlib import closing
-from datetime import date
+from datetime import date, timedelta
 
 from langchain_core.tools import tool
 
@@ -512,9 +515,10 @@ def status_pedido(order_id: int, identificador: str) -> str:
     if abs(soma_tabela - o["total_brl"]) > 0.01:
         linhas.append(
             f"Atenção ao valor: a soma dos itens pelo preço de tabela de hoje daria "
-            f"{_brl(soma_tabela)}, mas o pedido foi fechado em {_brl(o['total_brl'])}. "
-            "Houve desconto aplicado na venda e o sistema não registra o preço unitário "
-            "pago — informe o VALOR TOTAL do pedido e não tente recalcular item a item.")
+            f"{_brl(soma_tabela)}, e o pedido foi fechado em {_brl(o['total_brl'])}. A "
+            "diferença vem do que entrou no fechamento (desconto de pagamento, promoção da "
+            "época, frete) e o sistema não guarda o preço unitário pago. Informe o VALOR "
+            "TOTAL do pedido e não recalcule item a item.")
     if o["status"] == "cancelled":
         linhas.append(f"Motivo do cancelamento: {o['notes'] or 'não informado'}")
     if o["estimated_delivery"]:
@@ -530,5 +534,333 @@ def status_pedido(order_id: int, identificador: str) -> str:
     return "\n".join(linhas)
 
 
+# ---------------------------------------------------------------------------
+# Identificação do cliente (opcional) — personaliza o atendimento, não autentica
+# ---------------------------------------------------------------------------
+# Fronteira de segurança, explícita: esta tool NÃO é um login. Ela só confirma que um
+# e-mail pertence a alguém do cadastro e devolve o suficiente para cumprimentar pelo nome
+# (§7.2: "cumprimentar pelo nome, se disponível"). Dado de pedido continua saindo apenas
+# pelo status_pedido, que exige número do pedido + e-mail.
+#
+# Por que ela pode citar um pedido EM TRÂNSITO sem afrouxar nada: `order_id` é sequencial
+# de 1 a 20 (limitação já documentada no README), então quem tem o e-mail já consegue
+# enumerar os pedidos no status_pedido. O e-mail é, na prática, o fator único desde antes
+# desta tool. Citar o pedido a caminho não amplia a exposição — só troca uma varredura
+# silenciosa por um atendimento útil.
+
+
+@tool
+def identificar_cliente(email: str) -> str:
+    """Verifica se um e-mail pertence a um cliente já cadastrado, para personalizar o
+    atendimento. NÃO é autenticação e NÃO libera dados de pedido — para isso, status_pedido.
+
+    Use quando o cliente oferecer o e-mail espontaneamente, ou logo depois de convidá-lo a
+    se identificar na saudação. NUNCA exija o e-mail para responder preço, catálogo,
+    horário, política ou qualquer coisa que não seja pessoal: a identificação é opcional.
+
+    email: o e-mail que o cliente informou, exatamente como veio.
+
+    Retorna o primeiro nome (para o cumprimento), a cidade (útil para o frete) e se há
+    pedidos — ou a instrução de tratar como cliente novo.
+    """
+    log.debug("identificar_cliente(dominio=%r)", email.split("@")[-1] if "@" in email else "?")
+    if "@" not in (email or ""):
+        return ("Isso não parece um e-mail. Não insista: a identificação é opcional — "
+                "siga o atendimento normalmente e só peça o e-mail se a conversa chegar "
+                "em pedido ou histórico.")
+
+    with closing(_conn()) as c:
+        cli = c.execute("SELECT * FROM customers WHERE LOWER(TRIM(email)) = ?",
+                        [_norm(email)]).fetchone()
+        if not cli:
+            return ("Não há cadastro com esse e-mail. Trate como CLIENTE NOVO: dê as boas-vindas, "
+                    "pergunte como pode chamá-lo e siga o atendimento normalmente. Não afirme "
+                    "que criou cadastro — este sistema não cadastra clientes.")
+        pedidos = c.execute(
+            "SELECT order_id, status, order_date FROM orders WHERE customer_id = ? "
+            "ORDER BY order_date DESC", [cli["customer_id"]]).fetchall()
+
+    primeiro = cli["name"].split()[0]
+    linhas = [f"Cliente cadastrado: {cli['name']}. Chame-o de {primeiro} (só o primeiro nome).",
+              f"Cidade: {cli['city']}."]
+    if _norm(cli["city"]) == "campo grande":
+        linhas.append("É Campo Grande: ao usar simular_pagamento, passe "
+                      "entrega_em_campo_grande=True sem precisar perguntar a cidade.")
+    else:
+        linhas.append("Fora de Campo Grande: o frete não é calculável (depende de CEP, peso "
+                      "e dimensões) — use as regras da política de frete.")
+
+    if not pedidos:
+        linhas.append("Ainda NÃO tem nenhum pedido. Cumprimente pelo nome e trate como quem "
+                      "ainda vai fazer a primeira compra — não invente histórico de compras.")
+    else:
+        ultimo = pedidos[0]
+        linhas.append(f"Tem {len(pedidos)} pedido(s); o mais recente é de "
+                      f"{date.fromisoformat(ultimo['order_date']).strftime('%d/%m/%Y')}.")
+        transito = [p for p in pedidos if p["status"] in ("shipped", "confirmed", "pending")]
+        if transito:
+            p0 = transito[0]
+            linhas.append(f"O pedido {p0['order_id']} está '{_STATUS_PEDIDO.get(p0['status'], p0['status'])}' "
+                          "— ofereça acompanhar. Para dar QUALQUER detalhe (itens, valor, "
+                          "rastreio) chame status_pedido com o número e este mesmo e-mail.")
+        else:
+            linhas.append("Nenhum pedido em andamento. Se ele perguntar de um pedido antigo, "
+                          "peça o número e use status_pedido.")
+    return "\n".join(linhas)
+
+
+# ---------------------------------------------------------------------------
+# Compra (mock) — o único caminho que ESCREVE no banco
+# ---------------------------------------------------------------------------
+# A invariante do projeto que continua valendo: o LLM não gera SQL. A escrita abaixo é
+# parametrizada e fixa; o modelo só preenche argumentos. O que muda é que o banco deixou
+# de ser só leitura — e só por aqui, com uma compra que o cliente confirmou.
+#
+# NADA de dado de pagamento. Nem cartão, nem chave PIX, nem CPF: o mock grava apenas o
+# RÓTULO do método, que é o que a coluna orders.payment_method já contém. `_parece_credencial`
+# recusa qualquer coisa que chegue parecendo número de cartão.
+
+_PAGAMENTOS = {"pix": "pix", "debito": "debit", "débito": "debit", "debit": "debit",
+               "boleto": "boleto", "cartao de debito": "debit", "cartão de débito": "debit"}
+for _n in (3, 6, 12):                     # crédito parcelado, como o dataset grava
+    _PAGAMENTOS[f"credit_{_n}x"] = f"credit_{_n}x"
+    _PAGAMENTOS[f"credito {_n}x"] = f"credit_{_n}x"
+    _PAGAMENTOS[f"cartao {_n}x"] = f"credit_{_n}x"
+    _PAGAMENTOS[f"{_n}x"] = f"credit_{_n}x"
+
+MAX_UNIDADES = 10   # teto de sanidade: erro de digitação do modelo não compra 999
+
+
+def _parece_credencial(texto: str) -> bool:
+    """Qualquer coisa com 8+ dígitos seguidos (com ou sem espaço/traço) é tratada como
+    dado de pagamento e recusada — nunca deve entrar aqui."""
+    return len(re.sub(r"\D", "", texto or "")) >= 8
+
+
+def _rastreio() -> str:
+    """Formato da política §5.3: BR + 9 alfanuméricos + BR."""
+    return "BR" + "".join(random.choice(string.ascii_uppercase + string.digits)
+                          for _ in range(9)) + "BR"
+
+
+def _dias_uteis(inicio: date, n: int) -> date:
+    d, restam = inicio, n
+    while restam:
+        d += timedelta(days=1)
+        if d.weekday() < 5:
+            restam -= 1
+    return d
+
+
+def _codigo(*partes) -> str:
+    """Hash curto do conteúdo do pedido. É o que impede o agente de gravar sem ter passado
+    pela prévia: ele não tem como adivinhar o código, então não consegue pular a etapa em
+    que o preço é mostrado ao cliente."""
+    return hashlib.sha256("|".join(str(p) for p in partes).encode()).hexdigest()[:8].upper()
+
+
+def _orcamento(prod: sqlite3.Row, qtd: int, forma: str, cidade: str) -> dict:
+    """Preço final. Reusa as mesmas regras de simular_pagamento — nada de segunda cópia."""
+    unit = prod["preco_promocional"] or prod["preco_tabela"]
+    subtotal = round(unit * qtd, 2)
+    # §6.2: os 5% do PIX não incidem sobre preço já promocional
+    desc_pix = round(subtotal * _PIX_DESCONTO, 2) if (forma == "pix" and not prod["promo_ativa_pct"]) else 0.0
+    gratis_acima, taxa = _FRETE_CG
+    em_cg = _norm(cidade) == "campo grande"
+    frete = 0.0 if (em_cg and subtotal - desc_pix > gratis_acima) else (taxa if em_cg else 0.0)
+    return {"unit": unit, "subtotal": subtotal, "desc_pix": desc_pix, "frete": frete,
+            "em_cg": em_cg, "total": round(subtotal - desc_pix + frete, 2)}
+
+
+@tool
+def comprar(produto: str, quantidade: int, email: str, forma_de_pagamento: str,
+            nome: str = "", telefone: str = "", cidade: str = "",
+            codigo_de_confirmacao: str = "") -> str:
+    """Fecha uma compra. Funciona em DOIS PASSOS e você precisa dos dois.
+
+    PASSO 1 — sem `codigo_de_confirmacao`: a ferramenta valida tudo, calcula o preço final
+    (promoção, desconto do PIX, frete) e devolve o resumo mais um CÓDIGO. NADA é gravado.
+    Apresente o resumo ao cliente e PERGUNTE SE ELE CONFIRMA.
+
+    PASSO 2 — só depois de um "sim" explícito do cliente: chame de novo com os MESMOS
+    argumentos mais o `codigo_de_confirmacao` que veio no passo 1. Aí sim o pedido é criado,
+    o estoque baixa e sai o número do pedido com rastreio.
+
+    Nunca invente o código, nunca pule o passo 1, e nunca confirme no lugar do cliente.
+
+    produto: nome (ou parte) ou id do instrumento.
+    quantidade: número de unidades.
+    email: e-mail do cliente. Use identificar_cliente antes para saber se ele já é cadastrado.
+    forma_de_pagamento: "pix", "boleto", "débito", ou "crédito 3x/6x/12x". NUNCA peça nem
+        passe número de cartão, chave PIX ou CPF — não são necessários e serão recusados.
+    nome / telefone / cidade: só para cliente NÃO cadastrado; a ferramenta avisa se faltarem.
+    codigo_de_confirmacao: vazio no passo 1; o código do resumo no passo 2.
+    """
+    log.debug("comprar(produto=%r, qtd=%s, forma=%r, confirmando=%s)",
+              produto, quantidade, forma_de_pagamento, bool(codigo_de_confirmacao))
+
+    if _parece_credencial(forma_de_pagamento):
+        return ("Não trabalho com dados de pagamento: não me passe número de cartão, chave PIX "
+                "nem CPF. Diga só a FORMA (pix, boleto, débito ou crédito em Nx) — o pagamento "
+                "é combinado depois, fora do chat.")
+    forma = _PAGAMENTOS.get(_norm(forma_de_pagamento))
+    if not forma:
+        return ("Forma de pagamento não reconhecida. As aceitas são: pix, boleto, débito, ou "
+                "crédito em 3x, 6x ou 12x. Confirme com o cliente qual ele prefere.")
+    try:
+        qtd = int(quantidade)
+    except (TypeError, ValueError):
+        return "Quantidade inválida. Confirme com o cliente quantas unidades ele quer."
+    if qtd < 1 or qtd > MAX_UNIDADES:
+        return (f"Quantidade fora do permitido (1 a {MAX_UNIDADES} unidades por pedido). "
+                "Confirme com o cliente.")
+    if "@" not in (email or ""):
+        return "Preciso do e-mail do cliente para registrar o pedido. Peça a ele."
+
+    with closing(_conn()) as c:
+        if produto.strip().isdigit():
+            achados = c.execute("SELECT * FROM v_produto WHERE product_id = ?",
+                                [int(produto)]).fetchall()
+        else:
+            alvo = _norm(produto).split()
+            achados = [r for r in c.execute("SELECT * FROM v_produto").fetchall()
+                       if all(p in _norm(r["name"]) for p in alvo)]
+        if not achados:
+            return f"Não encontrei nenhum produto para '{produto}'. Confirme o modelo com o cliente."
+        if len(achados) > 1:
+            return ("Mais de um produto casa com esse nome — confirme qual com o cliente:\n"
+                    + "\n".join(f"- {r['name']}" for r in achados[:10]))
+        prod = achados[0]
+        if prod["status"] != "active":
+            return (f"{prod['name']} está {_STATUS_PRODUTO.get(prod['status'], prod['status'])} "
+                    "e não pode ser vendido. Ofereça alternativas com buscar_produtos.")
+        if prod["stock_quantity"] < qtd:
+            return (f"Estoque insuficiente: há {prod['stock_quantity']} unidade(s) de "
+                    f"{prod['name']} e o cliente pediu {qtd}. Diga isso a ele com transparência.")
+
+        cli = c.execute("SELECT * FROM customers WHERE LOWER(TRIM(email)) = ?",
+                        [_norm(email)]).fetchone()
+
+    if not cli:
+        faltam = [r for r, v in (("nome completo", nome), ("telefone", telefone),
+                                 ("cidade", cidade)) if not (v or "").strip()]
+        if faltam:
+            return (f"Cliente novo (e-mail não cadastrado). Para registrar o pedido faltam: "
+                    f"{', '.join(faltam)}. Peça esses dados ao cliente — e só esses.")
+        if _parece_credencial(nome):
+            return "O campo nome veio com cara de número de documento. Peça o nome do cliente."
+
+    cidade_final = cli["city"] if cli else cidade
+    orc = _orcamento(prod, qtd, forma, cidade_final)
+    codigo = _codigo(prod["product_id"], qtd, _norm(email), forma, orc["total"])
+
+    if not codigo_de_confirmacao:
+        linhas = [
+            "PRÉVIA — nada foi gravado ainda. Mostre este resumo ao cliente e pergunte se ele confirma.",
+            f"Produto: {prod['name']}",
+            f"Quantidade: {qtd} × {_brl(orc['unit'])}"
+            + (f"  (preço promocional, -{prod['promo_ativa_pct']}% sobre {_brl(prod['preco_tabela'])})"
+               if prod["promo_ativa_pct"] else ""),
+            f"Subtotal: {_brl(orc['subtotal'])}",
+        ]
+        if orc["desc_pix"]:
+            linhas.append(f"Desconto PIX (5%): -{_brl(orc['desc_pix'])}")
+        elif forma == "pix":
+            linhas.append("Desconto PIX: não se aplica — o preço já é promocional (política 6.2).")
+        linhas.append(f"Frete: {'grátis' if not orc['frete'] else _brl(orc['frete'])}"
+                      + ("" if orc["em_cg"] else " — a combinar por CEP fora de Campo Grande"))
+        linhas += [
+            f"TOTAL: {_brl(orc['total'])}  ·  Pagamento: {_pagamento(forma)}",
+            f"Cliente: {cli['name'] if cli else nome} ({email})",
+            "",
+            f"Para confirmar, chame comprar de novo com os MESMOS argumentos e "
+            f"codigo_de_confirmacao='{codigo}' — mas só depois que o cliente disser sim.",
+        ]
+        return "\n".join(linhas)
+
+    if codigo_de_confirmacao.strip().upper() != codigo:
+        return ("Código de confirmação não confere com este pedido (algo mudou: produto, "
+                "quantidade, e-mail ou forma de pagamento). Refaça a prévia sem o código, "
+                "mostre o resumo atualizado ao cliente e peça a confirmação de novo.")
+
+    prazo = 3 if orc["em_cg"] else 12          # §5.1 (metropolitano) e §5.2 (PAC, pior caso)
+    with closing(_conn()) as c:
+        with c:                                 # transação: ou grava tudo, ou nada
+            if cli:
+                customer_id = cli["customer_id"]
+                nome_cliente = cli["name"]
+            else:
+                customer_id = (c.execute("SELECT MAX(customer_id) FROM customers").fetchone()[0] or 0) + 1
+                nome_cliente = nome.strip()
+                c.execute("INSERT INTO customers (customer_id, name, phone, email, city) "
+                          "VALUES (?, ?, ?, ?, ?)",
+                          [customer_id, nome_cliente, telefone.strip(), email.strip(), cidade.strip()])
+            order_id = (c.execute("SELECT MAX(order_id) FROM orders").fetchone()[0] or 0) + 1
+            rastreio = _rastreio()
+            entrega = _dias_uteis(DATA_REFERENCE_DATE, prazo)
+            c.execute("INSERT INTO orders (order_id, customer_id, order_date, status, total_brl, "
+                      "payment_method, tracking_code, estimated_delivery, notes) "
+                      "VALUES (?, ?, ?, 'shipped', ?, ?, ?, ?, NULL)",
+                      [order_id, customer_id, DATA_REFERENCE_DATE.isoformat(), orc["total"],
+                       forma, rastreio, entrega.isoformat()])
+            c.execute("INSERT INTO order_items (order_id, quantity, product_id) VALUES (?, ?, ?)",
+                      [order_id, qtd, prod["product_id"]])
+            c.execute("UPDATE products SET stock_quantity = stock_quantity - ? WHERE product_id = ?",
+                      [qtd, prod["product_id"]])
+    log.info("pedido %s criado: %sx produto %s", order_id, qtd, prod["product_id"])
+    return (f"PEDIDO CRIADO com sucesso.\n"
+            f"Número do pedido: {order_id}\n"
+            f"Cliente: {nome_cliente}\n"
+            f"Item: {qtd}× {prod['name']}\n"
+            f"Total: {_brl(orc['total'])} · {_pagamento(forma)}\n"
+            f"Código de rastreio: {rastreio}\n"
+            f"Previsão de entrega: {entrega.strftime('%d/%m/%Y')}\n"
+            f"Estoque restante do produto: {prod['stock_quantity'] - qtd}\n\n"
+            "Passe ao cliente o número do pedido, o rastreio e a previsão, e diga que ele pode "
+            "acompanhar pelo número a qualquer momento.")
+
+
+@tool
+def cancelar_pedido(order_id: int, email: str, motivo: str = "") -> str:
+    """Cancela um pedido e devolve as unidades ao estoque. Exige o mesmo par de identificação
+    do status_pedido: número do pedido + e-mail exato do cadastro.
+
+    Use quando o cliente pedir para cancelar E a política permitir. Consulte a política de
+    trocas ANTES: o prazo de arrependimento conta do RECEBIMENTO, data que o sistema não tem
+    — se o pedido já foi entregue, pergunte quando ele recebeu antes de decidir.
+
+    motivo: o que o cliente disse, em poucas palavras (fica registrado no pedido).
+    """
+    log.debug("cancelar_pedido(order_id=%s)", order_id)
+    with closing(_conn()) as c:
+        o = c.execute("SELECT * FROM orders WHERE order_id = ?", [order_id]).fetchone()
+        if not o:
+            return f"Não encontrei nenhum pedido com o número {order_id}."
+        cli = c.execute("SELECT * FROM customers WHERE customer_id = ?",
+                        [o["customer_id"]]).fetchone()
+        if not _identidade_confere(email, cli["email"] if cli else ""):
+            return (f"Por segurança, não posso mexer no pedido {order_id}: o e-mail informado não "
+                    "confere com o cadastro. Peça o e-mail usado na compra.")
+        if o["status"] == "cancelled":
+            return f"O pedido {order_id} já está cancelado."
+        if o["status"] == "delivered":
+            return (f"O pedido {order_id} consta como ENTREGUE, então isso não é um cancelamento "
+                    "e sim uma devolução. Consulte a política de trocas e pergunte ao cliente "
+                    "QUANDO ele recebeu — o prazo de arrependimento conta do recebimento, e o "
+                    "sistema não registra essa data. Não prometa o estorno antes de conferir.")
+        itens = c.execute("SELECT quantity, product_id FROM order_items WHERE order_id = ?",
+                          [order_id]).fetchall()
+        with c:
+            c.execute("UPDATE orders SET status = 'cancelled', notes = ? WHERE order_id = ?",
+                      [(motivo or "cancelado a pedido do cliente").strip()[:120], order_id])
+            for it in itens:
+                c.execute("UPDATE products SET stock_quantity = stock_quantity + ? "
+                          "WHERE product_id = ?", [it["quantity"], it["product_id"]])
+    log.info("pedido %s cancelado", order_id)
+    return (f"Pedido {order_id} cancelado e as unidades voltaram ao estoque.\n"
+            f"Motivo registrado: {(motivo or 'cancelado a pedido do cliente').strip()[:120]}\n"
+            "Informe o cliente e, se ele já tiver pago, oriente pela política de reembolso.")
+
+
 TOOLS = [buscar_produtos, detalhe_produto, status_pedido, consultar_politica,
-         simular_pagamento]
+         simular_pagamento, identificar_cliente, comprar, cancelar_pedido]
