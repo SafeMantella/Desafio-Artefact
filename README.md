@@ -94,7 +94,7 @@ Variáveis de ambiente (`.env`):
 ### Testes
 
 ```bash
-python test_agent.py             # 12 checks determinísticos, sem LLM — segundos
+python test_agent.py             # 13 checks determinísticos, sem LLM — segundos
 python test_live.py              # 33 casos × 3 rodadas contra o LM Studio — horas
 python test_live.py --rodadas 1  # 1 rodada só, para iterar
 python test_live.py identidade   # só os casos cujo nome contém "identidade"
@@ -143,7 +143,7 @@ O modelo recebe as cinco ferramentas e decide, a cada turno, se responde direto 
 uma delas. As tools de dados executam **SQL parametrizado** (o LLM nunca escreve SQL). A tool
 de política devolve as seções relevantes do manual em markdown.
 
-### As 5 ferramentas (tools)
+### As ferramentas (tools)
 
 | Ferramenta | Quando o agente usa | Retorno |
 |---|---|---|
@@ -152,7 +152,8 @@ de política devolve as seções relevantes do manual em markdown.
 | `status_pedido(order_id, identificador)` | andamento de um pedido | status, itens, valor, previsão, rastreio, dias **desde a compra** (e o aviso de que não há data de recebimento) — **só após conferir identidade** |
 | `consultar_politica(topico)` | horário, endereço, pagamento, troca/devolução, frete, garantia, LGPD, escopo | seção(ões) do `policies.md` |
 | `identificar_cliente(email)` | reconhecer o cliente na abertura (opcional) | primeiro nome, cidade e se há pedidos — **não** libera dado de pedido |
-| `simular_pagamento(valor, entrega_em_campo_grande)` | **conta** sobre um valor: quantas parcelas cabem, quanto fica cada uma, preço no PIX, frete metropolitano | simulação pronta; para fora de Campo Grande declara que o frete não é calculável e manda oferecer contato humano |
+| `simular_pagamento(valor, entrega_em_campo_grande)` | **conta** sobre um valor: quantas parcelas cabem, quanto fica cada uma, preço no PIX, frete metropolitano | simulação pronta com faixas e desconto PIX |
+| `calcular_frete(cep, produto_ou_categoria, peso_kg, ...)` | cálculo de frete para fora de Campo Grande via CEP, peso e dimensões (política 5.2) | cotação em 3 modalidades (PAC, SEDEX, Jadlog) com prazos, rastreio e seguro. Para instrumentos de grande porte (baterias acústicas, pianos digitais, contrabaixos), orienta contato via WhatsApp/e-mail para cotação humana |
 
 Uma busca é **uma** chamada: `buscar_produtos` devolve a lista inteira (até 20 itens) numa
 só ida à ferramenta — 20 resultados não são 20 tool calls. `detalhe_produto` é que é de um
@@ -211,6 +212,17 @@ relevantes.
 
 - **Por que não RAG com vector store:** o manual tem ~4 mil tokens e 10 seções bem delimitadas. Seria mais infraestrutura, mais latência e mais um ponto de falha para resolver um problema que uma tabela de palavras-chave resolve de forma **determinística** e explicável. RAG semântico só se justificaria com uma quantidade massiva de documentos.
 - **Por que não jogar o manual inteiro no system prompt:** gastaria ~4k tokens de contexto em todo turno (a janela de um modelo local é menor, e em modelo frontier são 4k tokens gastos garantidos), além de misturar política irrelevante no raciocínio.
+
+#### Critério de Manutenibilidade: Divisão de Responsabilidades
+Para equilibrar latência, precisão matemática e manutenibilidade operacional:
+1. **No System Prompt (Seção 1):** apenas dados cadastrais perenes e identidade (Razão Social, CNPJ, fundação em 2008, missão e escopo estrito de catálogo sem acessórios). Responde perguntas institucionais sem overhead de tool calling.
+2. **Via Ferramenta de Políticas (`consultar_politica` — Seção 2 em diante):** regras operacionais descritivas e dinâmicas (horários de funcionamento, atendimento de sábado/feriados, extensões sazonais como Black Friday/Natal, políticas de troca, frete e garantia). Mudanças de texto são feitas diretamente em `policies.md`, sem tocar no código do agente. Em trocas e devoluções (Seção 4), o agente cruza a política com os dados de `status_pedido` (diferenciando prazo de recebimento vs. compra e barrando itens inelegíveis como boquilhas, setup sob encomenda e venda final).
+3. **Via Ferramenta Aritmética Determinística (`simular_pagamento` — Seções 3 e 5.1):** cálculos matemáticos exatos (desconto PIX de 5%, faixas de parcelamento até 3x/50, 4-6x/80, 7-12x/100, e trava de combinação acima de R$ 2.000). Elimina alucinações de contas do LLM e possui validação automática em `test_simular_pagamento` garantindo que as constantes em código coincidam com o texto do manual.
+4. **Governança de Promoções (Seção 6):** integridade em três camadas — o banco (`v_produto`) aplica apenas a maior promoção ativa sem cumulatividade com os 5% do PIX (§6.2); `consultar_politica` detalha as campanhas sazonais e veta *rain check* (reserva de preço para produtos esgotados); e o prompt proíbe o agente de classificar o desconto permanente do PIX como "promoção" ou criar cupons inexistentes.
+5. **Atendimento e Canais Oficiais (Seção 7):** a loja dispõe de dois canais de WhatsApp ativos — (67) 3341-4444 (que também opera como telefone fixo da empresa) e (67) 3321-4500 (atendimento remoto). Para reclamações (§7.3), o prompt força escuta empática com prazo de retorno de até 24 horas úteis pela gerência; para produtos descontinuados, orienta transparência sobre a saída de linha e oferta de modelos sucessores/equivalentes.
+6. **Garantia Legal vs. Fabricante (Seção 8):** distinção clara de prazos — a troca na loja por defeito vale até 30 dias da compra (§4.2); após esse período, vigora a garantia legal de 90 dias a partir do recebimento (§8.1) e a do fabricante (6 meses a 2 anos, §8.2). Exclusões como desgaste natural (trastes, cordas, feltros, palhetas de sopro) e danos estéticos são respaldadas pelo texto da política consultado dinamicamente.
+7. **Privacidade e Proteção de Dados (Seção 9):** conformidade com a LGPD (Lei nº 13.709/2018) em infraestrutura e comportamento — modelo local (LM Studio) sem envio de dados para servidores externos; dados de pedidos resguardados por conferência rigorosa de e-mail; e `consultar_politica` cobrindo direitos de exclusão e finalidades de tratamento de dados.
+8. **Disposições Finais e Casos Omissos (Seção 10):** guard-rail contra alucinação de regras — se uma dúvida não estiver expressamente coberta no manual, o agente é proibido de inventar soluções plausíveis (multas, compensações, prazos paralelos) e instruído a responder com honestidade que irá confirmar com a gerência/equipe.
 
 ### 4. Tratamento dos dados — ETL para SQLite com views
 
@@ -371,7 +383,7 @@ Regra de política: vive só no texto, não no código nem no prompt.
 
 Dois níveis, ambos com `assert` e um `main()` próprio, sem pytest:
 
-- **`test_agent.py`** (12 funções, sem LLM): a lógica determinística — views do ETL e a correção de marca, roteamento das 10 seções de política, as tools de dados, a verificação de identidade contra os 20 pedidos, a aritmética de `simular_pagamento` (e a conferência das constantes contra o manual) e a poda de histórico. Inclui `test_policies_sem_perda`, que garante que a curadoria de `policies.md` mexeu em forma e não em conteúdo: todo número, valor e e-mail do `policies_raw.md` sobrevive no curado. Rápido, roda em qualquer lugar.
+- **`test_agent.py`** (13 funções, sem LLM): a lógica determinística — views do ETL e a correção de marca, roteamento das 10 seções de política, as tools de dados, a calculadora de frete (`calcular_frete`), a verificação de identidade contra os 20 pedidos, a aritmética de `simular_pagamento` (e a conferência das constantes contra o manual) e a poda de histórico. Inclui `test_policies_sem_perda`, que garante que a curadoria de `policies.md` mexeu em forma e não em conteúdo: todo número, valor e e-mail do `policies_raw.md` sobrevive no curado. Rápido, roda em qualquer lugar.
 - **`test_live.py`** (33 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta — cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é o que trava regressão de comportamento quando o prompt muda.
 
 Evals: Cada execução escreve **[`eval_report.md`](eval_report.md)** com a taxa e a latência (mediana e pior caso) de cada caso. O arquivo é versionado de propósito: quem for avaliar o projeto vê o número sem precisar instalar o LM Studio e baixar o modelo.
@@ -435,10 +447,36 @@ informado calcula as duas pontas — os 5% incidem **só** sobre a parte paga no
 parcelamento é recalculado sobre o que sobra no cartão. O agente não divide de cabeça.
 
 O frete entra só na metade calculável (região metropolitana: grátis acima de R$ 500, senão
-R$ 35). Para outras cidades depende de CEP, peso e dimensões: a ferramenta **declara que não
-calcula**, manda informar as modalidades da §5.2 e oferecer o contato da equipe para
-cotação. Uma tool que só reimprimisse a §5 seria uma segunda porta para a mesma fonte —
-`consultar_politica` já faz isso.
+R$ 35), junto com o prazo da §5.1 — 1 a 3 dias úteis, motoboy próprio, contato por telefone
+antes da entrega. Para outras cidades depende de CEP, peso e dimensões: a ferramenta
+**declara que não calcula**, manda informar as modalidades da §5.2 e oferecer o contato da
+equipe para cotação. Uma tool que só reimprimisse a §5 seria uma segunda porta para a mesma
+fonte — `consultar_politica` já faz isso.
+
+A §5.1 deixa duas coisas em aberto e as duas viraram **suposição documentada** (no cabeçalho
+de `policies.md` e travada no `test_simular_pagamento`):
+
+- **R$ 500,00 exatos pagam frete.** O texto diz "grátis *acima de* R$ 500,00" e "*abaixo de*
+  R$ 500,00, taxa fixa" — o valor redondo não cai em nenhuma das duas frases. Adotada a
+  leitura literal de "acima de" (`>`).
+- **O limite vale sobre o subtotal PAGO, depois dos descontos** — não sobre o preço de
+  tabela. É o que e-commerce real faz, e tem uma consequência que o agente precisa dizer em
+  voz alta: numa compra de R$ 520, o cartão passa dos R$ 500 e ganha frete grátis (total
+  R$ 520,00), mas o PIX derruba o subtotal para R$ 494,00 e volta a pagar os R$ 35 (total
+  R$ 529,00) — **o cartão sai mais barato que o PIX**. Quando as duas formas caem em lados
+  diferentes do limite, `simular_pagamento` devolve as duas contas com os totais e diz qual
+  vence; o prompt manda apresentar ambas em vez de escolher pelo cliente. Sem essa regra o
+  agente prometia frete grátis olhando a etiqueta e errava o total.
+
+O último pedaço da §5.2 — instrumentos de grande porte podem exigir cotação individual —
+sai pelo catálogo, não pela política: `buscar_produtos` **e** `detalhe_produto` marcam o item
+e mandam avisar antes que o cliente pergunte. Os dois, porque o eval pegou exatamente isso:
+com a marca só na ficha, o agente respondia "quanto custa a bateria X?" pela busca e nunca
+via o aviso. O match é pelo **nome**, não pela categoria, de propósito: a
+categoria "Baixos" só tem baixo *elétrico* (porte de guitarra) e "Teclados e Pianos" só tem
+sintetizador — marcar as duas mandaria o cliente pedir cotação à toa. Hoje casam os 3 kits
+de bateria acústica; `piano digital` e `contrabaixo acústico` ficam prontos para quando o
+catálogo tiver o item.
 
 ---
 
@@ -478,8 +516,20 @@ cotação. Uma tool que só reimprimisse a §5 seria uma segunda porta para a me
   não acha a Gibson. Cobrir isso pede busca semântica, não mais entradas na tabela.
   "Violão para iniciante" também não funciona: está só em `description`, que fica fora do
   match de propósito (ver o ruído nome × descrição abaixo).
-- **`consultar_politica` é por palavra-chave.** Uma pergunta com vocabulário muito distante das palavras mapeadas pode não casar a seção certa.
-- **Frete e parcelamento não são calculados** — o agente informa as regras da política, não simula valores para um CEP ou uma compra específica.
+- **`consultar_politica` é por palavra-chave.** Uma pergunta com vocabulário muito distante
+  das palavras mapeadas pode não casar a seção certa. Uma palavra pode apontar para **mais de
+  uma** seção quando a ambiguidade é real e não um defeito do roteador: "chegou quebrado" é
+  §5.2 (avaria no transporte — recusar o recebimento, acionar o seguro) *ou* §4.2 (defeito de
+  fabricação — troca em 30 dias), e só o cliente sabe qual. A ferramenta devolve as duas e o
+  prompt manda **perguntar**, em vez de escolher um procedimento no escuro. Antes disso todo
+  esse vocabulário (`avaria`, `amassada`, `extravio`, `sumiu`) caía no fallback e o modelo
+  reformulava para "defeito", respondendo com a §4 uma situação da §5.
+- **Frete fora de Campo Grande não é calculado.** O parcelamento e o frete metropolitano
+  são calculados (§13), mas para outras cidades a §5.2 depende de CEP, peso e dimensões —
+  dados que o dataset não tem. O agente declara isso e oferece cotação com a equipe, em vez
+  de estimar. Do mesmo modo, a §5.2 diz que o envio tem seguro e o que fazer em caso de
+  avaria, mas **abrir um sinistro é fora do escopo do protótipo**: o agente explica o
+  procedimento e encaminha para a equipe.
 - **Preço por item de pedido não existe no dado.** `order_items.csv` só tem quantidade. O
   que a loja cobrou está apenas no total do pedido, e em 2 dos 20 pedidos ele não bate com a
   soma a preço de tabela (pedido 3: R$ 3.450 contra R$ 3.498; pedido 20: R$ 1.400 contra

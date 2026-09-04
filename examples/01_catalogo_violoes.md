@@ -26,30 +26,28 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 
 **Assistente:** Olá! Sou a **melodIA**, da Empório da Música — sua música começa aqui! 😊
 
-Encontrei **12 violões** disponíveis até R\$ 1000. São eles:
+Encontrei **12 violões** disponíveis até R\$ 1.000,00:
 
-- **Tagima Memphis AC-39 Nylon Natural** — R\$ 429,90 (à vista no PIX: R\$ 408,40)
-- **Rozini RC-104 Nylon Estudante** — R\$ 459,90 (à vista no PIX: R\$ 436,90)
-- **Shelby SN-100 Folk Aço Preto** — R\$ 549,00 (à vista no PIX: R\$ 521,55)
-- **Giannini GF-1R Aço Folk Sunburst** — R\$ 579,90 (à vista no PIX: R\$ 550,90)
-- **Yamaha C40 Nylon Natural** — R\$ 599,90 (à vista no PIX: R\$ 569,90)
-- **Giannini GN-15 Nylon Cedr Natural** — R\$ 689,00 (à vista no PIX: R\$ 654,55)
-- **Yamaha F310 Aço Natural** — R\$ 699,90 (à vista no PIX: R\$ 664,90)
-- **Tagima Dallas Tuner Aço Natural** — R\$ 749,00 (à vista no PIX: R\$ 711,55)
-- **Shelby SGD-195E Elétrico Aço Sunburst** — R\$ 799,00 (à vista no PIX: R\$ 759,05)
-- **Yamaha C70 Nylon Natural** — R\$ 849,00 (à vista no PIX: R\$ 806,55)
-- **Tagima Woodstock Dreadnought Natural** — R\$ 899,00 (à vista no PIX: R\$ 854,05)
-- **Tagima TW-7 7 Cordas Aço Natural** — R\$ 999,00 (à vista no PIX: R\$ 949,05)
+- **Tagima Memphis AC-39 Nylon Natural** — R\$ 429,90
+- **Rozini RC-104 Nylon Estudante** — R\$ 459,90
+- **Shelby SN-100 Folk Aço Preto** — R\$ 549,00
+- **Giannini GF-1R Aço Folk Sunburst** — R\$ 579,90
+- **Yamaha C40 Nylon Natural** — R\$ 599,90
+- **Giannini GN-15 Nylon Cedr Natural** — R\$ 689,00
+- **Yamaha F310 Aço Natural** — R\$ 699,90
+- **Tagima Dallas Tuner Aço Natural** — R\$ 749,00
+- **Shelby SGD-195E Elétrico Aço Sunburst** — R\$ 799,00
+- **Yamaha C70 Nylon Natural** — R\$ 849,00
+- **Tagima Woodstock Dreadnought Natural** — R\$ 899,00
+- **Tagima TW-7 7 Cordas Aço Natural** — R\$ 999,00
 
-Se quiser ver as especificações técnicas de algum deles (tampo, cordas, escala, etc.), é só me dizer o nome! Também posso te mostrar quanto sai no PIX ou em quantas vezes dá para parcelar.
+Tem algum modelo que te chamou mais atenção? Posso te passar as especificações técnicas de um deles, ou simular como fica o pagamento (PIX com 5% de desconto, parcelamento, etc.)!
 
-E se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico! 😄
-
-Qualquer coisa, estou à disposição!
+Se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico.
 
 **Cliente:** O Yamaha F310 tem alguma promoção?
 
-> 🔧 chama `detalhe_produto(nome_ou_id='Yamaha F310')`
+> 🔧 chama `detalhe_produto(nome_ou_id='Yamaha F310 Aço Natural')`
 
 > 🔧 `detalhe_produto` →
 >
@@ -65,12 +63,10 @@ Qualquer coisa, estou à disposição!
 
 **Assistente:** Olá! Sou a **melodIA**, da Empório da Música — sua música começa aqui! 😊
 
-Sobre o **Yamaha F310 Aço Natural**: no momento, **não há nenhuma promoção ativa** para este modelo.
+O **Yamaha F310 Aço Natural** não tem nenhuma promoção ativa no momento. Ele está sendo vendido pelo preço de tabela: **R\$ 699,90**.
 
-Mas tem uma boa notícia: o desconto de **5% no PIX é permanente** — não é promoção, mas sempre vale! Então o valor à vista no PIX fica **R\$ 664,90** (já com esse desconto aplicado).
+Mas tem uma boa notícia: a loja oferece um **desconto fixo de 5% no PIX** para todos os instrumentos — isso é uma condição permanente, não uma promoção!
 
-Se quiser saber quanto sai parcelado ou se dá para pagar com boleto, é só me dizer! Posso te simular as opções.
+Quer que eu simule como fica o pagamento? Dá pra parcelar em até 12x sem juros, ou pagar à vista no PIX com o desconto de 5% (ficaria R\$ 664,90)!
 
-E se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico! 😄
-
-Qualquer coisa, estou à disposição!
+Tem algum outro modelo que te interessou ou quer saber mais sobre as especificações desse Yamaha?

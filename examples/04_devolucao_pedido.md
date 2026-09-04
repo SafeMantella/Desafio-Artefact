@@ -6,7 +6,7 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 
 **Cliente:** Comprei um ukulele aí e me arrependi. É o pedido 7, consigo devolver?
 
-> 🔧 chama `consultar_politica(topico='trocas devoluções arrependimento')`
+> 🔧 chama `consultar_politica(topico='devolução arrependimento')`
 
 > 🔧 `consultar_politica` →
 >
@@ -30,17 +30,23 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 > - Produto em perfeito estado e na embalagem original.
 > - Di […]
 
-**Assistente:** Olá! Sou a melodIA, da Empório da Música — sua música começa aqui. Como posso te ajudar hoje?
+**Assistente:** Olá! Sou a melodIA, da Empório da Música. Sua música começa aqui! 😊
 
-Se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico.
+Vi que você comprou um ukulele e quer saber sobre a devolução. Para te ajudar com isso, preciso confirmar sua identidade por segurança (LGPD).
+
+**Me passa o e-mail que você usou na compra do pedido 7?** Assim eu puxo seu histórico e te dou uma resposta certinha.
+
+Se você já é nosso cliente, me passa o e-mail que eu já puxo seu histórico.
 
 **Cliente:** Letícia Gonçalves Rocha
 
-**Assistente:** Olá, Letícia! Prazer em te atender de novo.
+**Assistente:** Oi, Letícia! 😊
 
-Para eu consultar o status do seu pedido 7 e ver se está dentro do prazo de devolução, preciso do **e-mail** que você usou na compra. Pode me passar?
+Entendi que você quer saber sobre a devolução do pedido 7. Mas para eu consultar o andamento do seu pedido, preciso do **e-mail que você usou na compra** — não o nome.
 
-Se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico.
+A ferramenta de consulta só funciona com o e-mail exato do cadastro (por segurança). 
+
+**Me passa o e-mail que você colocou no checkout?** Assim eu puxo seu histórico e te dou uma resposta certinha sobre a devolução.
 
 **Cliente:** leticia.rocha@jmail.com
 
@@ -67,23 +73,25 @@ Se você já é nosso cliente, me passa seu e-mail que eu já puxo seu históric
 > Código de rastreio: BRKR1122334BR
 > Obs.: o sistema NÃO registra a data de recebimento, só a da compra. Se o prazo da política contar a partir do recebimento, pergunte ao cliente quando ele recebeu antes de dizer se está dentro ou fora do prazo.
 
-**Assistente:** Letícia, o pedido 7 já está com status **entregue** (foi entregue em 17/02).
+**Assistente:** Oi, Letícia! 😊
 
-Mas aqui tem um detalhe importante: a política de arrependimento conta **7 dias corridos a partir do RECEBIMENTO** — e o sistema não registra quando você recebeu, só quando comprou.
+Puxei o seu pedido 7 e vi que ele foi **entregue em 17/02/2026**.
 
-Para eu te dizer se ainda está dentro do prazo, me diz: **em que dia você recebeu o ukulele?**
+Mas aqui tem um detalhe importante: a política de arrependimento conta **7 dias corridos a partir do RECEBIMENTO** do produto, não da compra. O sistema só registra quando foi entregue, não quando você recebeu.
+
+**Você me diz: em que dia você recebeu o ukulele?** Assim eu te confirmo se ainda está dentro do prazo para devolução.
 
 **Cliente:** Recebi ele ontem.
 
-**Assistente:** **Cálculo:**
-- Recebimento: 24/03 (ontem)
-- Prazo: 7 dias corridos a partir do recebimento
-- Último dia para devolução: **31/03**
+**Assistente:** Oi, Letícia! 😊
 
-Sim, Letícia! Você ainda está dentro do prazo de 7 dias corridos. A devolução é viável, desde que o ukulele esteja na embalagem original, sem sinais de uso e com todos os acessórios.
+Receber **ontem (24/03)** significa que você está dentro do prazo!
 
-**O que fazer:**
-1. Mantenha o produto na embalagem original, com todos os acessórios e manuais
-2. Entre em contato conosco para agendar a coleta do frete (a loja cobre o frete de devolução no caso de arrependimento)
+A política de arrependimento dá **7 dias corridos a partir do recebimento**. Como você recebeu ontem, os 7 dias vão até **30/03** — então ainda tem tempo!
 
-Quer que eu te ajude a formalizar esse processo agora?
+Para fazer a devolução, você precisa:
+- Manter o ukulele na **embalagem original**
+- Não ter usado, modificado ou danificado o instrumento
+- Ter todos os acessórios e manuais
+
+**Como você quer prosseguir?** Posso te orientar sobre o próximo passo ou você já sabe como fazer?

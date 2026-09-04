@@ -92,6 +92,24 @@ def test_consultar_politica():
     assert call("como excluo meus dados pessoais?").startswith("## 9."), "LGPD -> seção 9"
     assert call("o que dizem as disposições finais?").startswith("## 10."), "disposições -> seção 10"
 
+    # §5.2 (avaria/extravio no transporte): antes desta rodada TODO esse vocabulário caía
+    # no fallback "não identifiquei o tópico" e o modelo reformulava para "defeito" —
+    # respondendo com a §4 (troca em 30 dias) uma situação que a §5.2 resolve de outro
+    # jeito (recusar o recebimento, acionar o seguro).
+    secoes = lambda t: re.findall(r"^## (\d+)\.", call(t), re.M)
+    for pergunta in ("o produto veio com avaria", "a caixa chegou amassada",
+                     "meu pedido sumiu no correio", "tem seguro no envio?",
+                     "quando meu pedido é despachado?"):
+        assert secoes(pergunta) == ["5"], f"{pergunta!r} -> {secoes(pergunta)}, esperava só a 5"
+
+    # "quebrado" é ambíguo de verdade (avaria no transporte OU defeito de fábrica) e por
+    # isso pontua as DUAS seções: o agente recebe os dois procedimentos e pergunta ao
+    # cliente qual é o caso, em vez de escolher um. Já "defeito de fabricação" é só a 4.
+    assert secoes("meu violão chegou quebrado") == ["4", "5"], secoes("meu violão chegou quebrado")
+    # já "defeito de fabricação" não pode encostar na 5: é troca (4) e garantia (8), e o
+    # procedimento de avaria no transporte não se aplica.
+    assert "5" not in secoes("veio com defeito de fabricação"), secoes("veio com defeito de fabricação")
+
     # tópico não reconhecido -> mensagem de ajuda, não exceção
     assert "Assuntos cobertos" in call("qual a cor favorita do vendedor?")
 
@@ -155,6 +173,19 @@ def test_detalhe_produto():
     # promoção ativa (produto 127) mostra preço promocional
     r2 = detalhe_produto.invoke({"nome_ou_id": "127"})
     assert "-10%" in r2 and "R$ 323,10" in r2
+
+    # §5.2 (grande porte -> cotação individual): casa pelo NOME, não pela categoria. Os 3
+    # kits são "Bateria Acústica"; o baixo da categoria "Baixos" é elétrico (porte de
+    # guitarra) e o teclado é sintetizador — marcar os dois mandaria o cliente pedir
+    # cotação à toa.
+    assert "GRANDE PORTE" in detalhe_produto.invoke({"nome_ou_id": "139"})
+    for pid in ("135", "142", "81"):   # baixo elétrico, sintetizador, violão
+        assert "GRANDE PORTE" not in detalhe_produto.invoke({"nome_ou_id": pid}), pid
+
+    # a marca tem que sair nos DOIS caminhos até o preço. O eval pegou isso: com ela só na
+    # ficha, o agente respondia "quanto custa a bateria X?" pela busca e nunca via o aviso.
+    assert "GRANDE PORTE" in buscar_produtos.invoke({"categoria": "bateria"})
+    assert "GRANDE PORTE" not in buscar_produtos.invoke({"categoria": "violão", "preco_max": 1000})
 
     # ambiguidade -> lista de candidatos, não uma ficha
     r3 = detalhe_produto.invoke({"nome_ou_id": "Yamaha"})
@@ -292,8 +323,31 @@ def test_simular_pagamento():
     # abaixo do mínimo até em 2x
     assert "só à vista" in sim(40)
     # frete metropolitano: a única metade calculável
-    assert "R$ 35,00" in sim(480, cg=True) and "grátis" in sim(520, cg=True)
+    from tools import _PRAZO_CG
+    assert _PRAZO_CG in politica, f"prazo de entrega em CG ({_PRAZO_CG}) sumiu do manual"
+    assert _PRAZO_CG in sim(480, cg=True), "o prazo da §5.1 tem que vir junto com o frete"
     assert "NÃO tenho como calcular" in sim(480), "fora de CG não pode virar número"
+
+    # §5.1, duas suposições registradas no README e no cabeçalho do policies.md:
+    # (a) R$ 500,00 redondo PAGA frete — "acima de" é estrito;
+    # (b) o limite vale sobre o SUBTOTAL PAGO, depois do desconto.
+    assert "R$ 35,00" in sim(480, cg=True)
+    assert "R$ 35,00" in sim(500, cg=True), "R$ 500 redondo não é 'acima de R$ 500'"
+    assert "grátis" in sim(560, cg=True), "R$ 532 no PIX passa dos 500 nas duas formas"
+
+    # a consequência de (b): entre R$ 500,00 e R$ 526,31 o desconto do PIX derruba o
+    # subtotal para baixo do limite e o frete muda conforme a forma de pagamento. A
+    # ferramenta tem que devolver as DUAS contas — e, aqui, o cartão sai mais barato.
+    borda = sim(520, cg=True)
+    assert "DEPENDE da forma de pagamento" in borda, borda
+    assert "R$ 494,00 + frete R$ 35,00 = R$ 529,00" in borda, borda
+    assert "R$ 520,00 + frete grátis = R$ 520,00" in borda, borda
+    assert "mais barato no cartão" in borda, borda
+
+    # preço promocional não leva os 5% (§6.2), então não há divergência entre as formas:
+    # o mesmo R$ 520 promocional passa do limite nas duas e o frete sai grátis, sem ramo.
+    promo_borda = sim(520, cg=True, promo=True)
+    assert "grátis" in promo_borda and "DEPENDE" not in promo_borda, promo_borda
 
     # §3.1: combinar formas (PIX + cartão) só acima de R$ 2.000. Os 5% incidem apenas
     # sobre a parte paga no PIX, e o parcelamento é recalculado sobre o que sobra no cartão.
@@ -340,18 +394,40 @@ def test_poda_historico():
 
 
 def test_agente_compila():
-    """O grafo monta, as 6 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
+    """O grafo monta, as 7 tools ligam e o checkpointer cria as tabelas. Não chama o LLM."""
     from agent import build_agent
     from tools import TOOLS
     a = build_agent()
     assert a.__class__.__name__ == "CompiledStateGraph"
-    assert len(TOOLS) == 6
+    assert len(TOOLS) == 7
+
+
+def test_calcular_frete():
+    from tools import calcular_frete
+    # 1. Campo Grande
+    r_cg = calcular_frete.invoke({"cep": "79002-000", "produto_ou_categoria": "violão"})
+    assert "Região Metropolitana de Campo Grande" in r_cg
+    assert "motoboy" in r_cg
+
+    # 2. Outras cidades (São Paulo)
+    r_sp = calcular_frete.invoke({"cep": "01310-100", "produto_ou_categoria": "violão"})
+    assert "PAC (Correios)" in r_sp
+    assert "SEDEX (Correios)" in r_sp
+    assert "Jadlog (.package)" in r_sp
+    assert "Seguro: Incluído" in r_sp
+
+    # 3. Grande porte (baterias acústicas, pianos digitais, contrabaixos) -> cotação humana
+    for grande in ("bateria acústica", "piano digital", "contrabaixo"):
+        r_gp = calcular_frete.invoke({"cep": "01310-100", "produto_ou_categoria": grande})
+        assert "Instrumento de grande porte" in r_gp
+        assert "(67) 3341-4444" in r_gp
+        assert "contato@emporiodamusica.com.br" in r_gp
 
 
 TESTS = [test_etl_views, test_policies_sem_perda, test_consultar_politica,
          test_buscar_produtos, test_total_do_pedido_diverge_da_soma,
          test_detalhe_produto, test_status_pedido, test_identidade_nao_burlavel,
-         test_simular_pagamento, test_identificar_cliente,
+         test_simular_pagamento, test_calcular_frete, test_identificar_cliente,
          test_poda_historico, test_agente_compila]
 
 

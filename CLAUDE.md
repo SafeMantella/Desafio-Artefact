@@ -61,8 +61,8 @@ tools.py           as 6 tools LangChain (buscar_produtos, detalhe_produto,
 prompts.py         system prompt / persona / regras                         [Parte 4]
 agent.py           monta o ReAct agent + checkpointer                       [Parte 4]
 app.py             Streamlit                                                [Parte 5]
-test_agent.py      11 checks assert-based, sem LLM (views+ETL, política sem perda,
-                   roteamento das 10 seções, tools, identidade, parcelamento, poda)  [ao longo]
+test_agent.py      12 checks assert-based, sem LLM (views+ETL, política sem perda,
+                   roteamento das 10 seções, tools, identidade, parcelamento/frete, poda)  [ao longo]
 test_live.py       avaliação ponta a ponta contra o LM Studio, k rodadas por caso      [Parte 9-10]
 eval_report.md     saída da última execução do eval (taxa + latência por caso)      [Parte 10]
 examples/          3-5 conversas de exemplo                                 [Parte 6]
@@ -93,6 +93,29 @@ que achou e fechou o bug do `buscar_produtos` ("existe sem estoque" virava "não
 preço; relógio de arrependimento contava da compra e não do recebimento; histórico sem poda
 (`pre_model_hook` + `trim_messages`); eval rodava n=1 (agora `--rodadas`, default 3, com
 `eval_report.md` versionado); enunciado saiu do versionamento.
+
+**Parte 12** (auditoria da §5 — Política de Frete e Entregas): das 11 cláusulas da seção, 2
+eram calculadas, 6 viviam só no texto e 3 tinham furo. Fechados os três:
+1. **Avaria/extravio não roteava.** "chegou quebrado", "avaria", "amassada", "extravio",
+   "sumiu" caíam no fallback do `consultar_politica` e o modelo reformulava para "defeito",
+   respondendo com a §4 (troca em 30 dias) o que a §5.2 resolve de outro jeito (recusar o
+   recebimento, acionar o seguro). `_KEYWORDS` passou a mapear palavra → **lista** de seções:
+   "quebrado" pontua a 4 E a 5 (ambiguidade real — só o cliente sabe qual é), e o prompt
+   manda perguntar em vez de escolher. "defeito de fabricação" continua fora da 5.
+2. **Grande porte (§5.2) nunca disparava.** `buscar_produtos` e `detalhe_produto` marcam o
+   item e mandam avisar antes que o cliente pergunte — os DOIS, porque o eval pegou o
+   agente indo pela busca para dar o preço e nunca vendo o aviso que só estava na ficha.
+   Match por NOME (`_e_grande_porte`), não por categoria: a categoria "Baixos" só tem baixo
+   elétrico e "Teclados e Pianos" só tem sintetizador.
+3. **Prazo da §5.1 não saía com o frete.** `simular_pagamento` agora devolve "1 a 3 dias
+   úteis, motoboy próprio, contato por telefone" (`_PRAZO_CG`) junto da conta do frete.
+
+Mais as duas suposições que a §5.1 deixa em aberto, agora documentadas e travadas em teste:
+R$ 500,00 exatos **pagam** frete ("acima de" é estrito), e o limite vale sobre o **subtotal
+pago** (decisão do Pedro), não sobre o preço de tabela. Consequência que a ferramenta agora
+diz em voz alta: numa compra de R$ 520 o cartão ganha frete grátis (total R$ 520,00) e o PIX
+cai para R$ 494,00 e paga os R$ 35 (total R$ 529,00) — **o cartão sai mais barato que o
+PIX**. Quando as formas caem em lados diferentes do limite, saem as duas contas.
 
 **Parte 11** (revisão do README pelo Pedro, `brainstorm.txt` — arquivo local, fora do repo):
 cifrão escapado nos renderizadores; dinheiro normalizado no ETL; ruído nome×descrição

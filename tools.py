@@ -56,8 +56,13 @@ def _carregar_secoes() -> dict[str, str]:
     return {k: v.strip() for k, v in secoes.items()}
 
 
-# palavra-chave (normalizada, sem acento) -> número da seção
-_KEYWORDS: dict[str, str] = {}
+# palavra-chave (normalizada, sem acento) -> números das seções
+#
+# É uma LISTA e não uma seção só porque há palavra que pertence a duas de verdade:
+# "chegou quebrado" é §5.2 (avaria de transporte — recusar o recebimento, tem seguro) OU
+# §4.2 (defeito de fabricação — troca em 30 dias), e só o cliente sabe qual. Devolver as
+# duas seções deixa o agente PERGUNTAR qual é o caso em vez de chutar um procedimento.
+_KEYWORDS: dict[str, list[str]] = {}
 for _sec, _palavras in {
     "1": ["sobre a loja", "sobre a empresa", "empresa", "cnpj", "razao social", "endereco",
           "onde fica", "onde e", "localizacao", "local", "catalogo", "missao",
@@ -65,28 +70,49 @@ for _sec, _palavras in {
           "case", "cases", "pedal", "pedais", "amplificador", "amplificadores", "caixa de som",
           "vende", "vendem", "trabalha com", "tem a venda"],
     "2": ["horario", "hora", "que horas", "abre", "abrem", "fecha", "fecham", "funcionamento",
-          "aberto", "domingo", "sabado", "feriado", "expediente"],
+          "aberto", "domingo", "sabado", "feriado", "expediente", "atendimento presencial",
+          "fora do expediente"],
     "3": ["pagamento", "forma de pagamento", "pagar", "pix", "cartao", "credito", "debito",
-          "boleto", "parcelamento", "parcela", "parcelar", "juros", "a vista", "sem juros"],
+          "boleto", "parcelamento", "parcela", "parcelar", "juros", "a vista", "sem juros",
+          "combinar", "duas formas", "bandeiras", "compensacao"],
     "4": ["troca", "trocar", "devolucao", "devolver", "devolvo", "arrependimento", "arrependi",
           "reembolso", "reembolsar", "estorno", "defeito", "veio com defeito", "venda final",
-          "nao elegivel", "prazo de troca", "7 dias", "30 dias"],
+          "nao elegivel", "prazo de troca", "7 dias", "30 dias", "preferencia", "tamanho",
+          "troca de cor", "outra cor", "setup", "regulagem", "boquilha", "boquilhas", "higiene",
+          # ambíguas: podem ser defeito de fábrica (§4.2) ou avaria de transporte (§5.2).
+          # Estão nas DUAS listas de propósito — ver o comentário do _KEYWORDS.
+          "quebrado", "quebrada", "quebrou", "danificado", "danificada", "chegou quebrado",
+          "veio quebrado", "chegou quebrada", "trincado", "trincada"],
     "5": ["frete", "entrega", "entregar", "envio", "enviar", "correios", "sedex", "pac",
           "jadlog", "rastreamento", "rastreio", "rastrear", "codigo de rastreamento", "motoboy",
-          "prazo de entrega", "quando chega", "cep", "frete gratis"],
+          "prazo de entrega", "quando chega", "cep", "frete gratis", "regiao metropolitana",
+          "outras cidades",
+          # §5.2 (seguro/avaria) e §5.3 (despacho) — sem estas o cliente que teve problema
+          # no transporte caía no fallback "não identifiquei o tópico", ou pior, na §4.
+          "avaria", "avariado", "avariada", "amassado", "amassada", "caixa amassada",
+          "extravio", "extraviado", "sumiu", "nao chegou", "seguro", "despacho", "despachado",
+          "grande porte", "cotacao", "transportadora",
+          "quebrado", "quebrada", "quebrou", "danificado", "danificada", "chegou quebrado",
+          "veio quebrado", "chegou quebrada", "trincado", "trincada"],
     "6": ["promocao", "promocoes", "promo", "desconto", "black friday", "aniversario da loja",
           "volta as aulas", "queima de estoque", "semana do musico", "cupom", "oferta",
-          "liquidacao", "rain check"],
+          "liquidacao", "rain check", "cumulativo", "cumulativa", "cumulatividade",
+          "reserva de preco"],
     "7": ["whatsapp", "atendimento", "contato", "falar com atendente", "telefone", "numero da loja",
-          "reclamacao", "reclamar", "reclamacao", "fora de estoque", "descontinuado", "sac"],
+          "reclamacao", "reclamar", "fora de estoque", "descontinuado", "sac", "ouvidoria",
+          "falar com humano", "3321-4500", "3341-4444"],
     "8": ["garantia", "defeito de fabricacao", "90 dias", "fabricante", "cobertura",
-          "o que cobre", "nao cobre", "assistencia"],
+          "o que cobre", "nao cobre", "assistencia", "desgaste", "trastes", "feltros",
+          "garantia legal", "garantia do fabricante", "certificado de garantia",
+          "assistencia tecnica", "dano estetico"],
     "9": ["lgpd", "privacidade", "protecao de dados", "dados pessoais", "excluir meus dados",
-          "exclusao de dados", "meus dados"],
-    "10": ["disposicoes finais", "gerencia", "atualizacao do manual"],
+          "exclusao de dados", "meus dados", "lei geral de protecao de dados", "13.709",
+          "excluir dados", "exclusao", "compartilhamento", "marketing", "consentimento"],
+    "10": ["disposicoes finais", "gerencia", "atualizacao do manual", "documento interno",
+           "casos omissos", "duvidas sobre politica"],
 }.items():
     for _p in _palavras:
-        _KEYWORDS[_norm(_p)] = _sec
+        _KEYWORDS.setdefault(_norm(_p), []).append(_sec)
 
 _SECOES = _carregar_secoes()
 _TITULOS = {n: linha.splitlines()[0].lstrip("# ").strip() for n, linha in _SECOES.items()}
@@ -109,9 +135,10 @@ def consultar_politica(topico: str) -> str:
     log.debug("consultar_politica(topico=%r)", topico)
     q = _norm(topico)
     pontos: dict[str, int] = {}
-    for palavra, sec in _KEYWORDS.items():
+    for palavra, secs in _KEYWORDS.items():
         if re.search(rf"\b{re.escape(palavra)}\b", q):  # palavra inteira, não "vende" em "vendedor"
-            pontos[sec] = pontos.get(sec, 0) + len(palavra)  # match mais específico pesa mais
+            for sec in secs:  # uma palavra pode pontuar duas seções (ex.: "quebrado")
+                pontos[sec] = pontos.get(sec, 0) + len(palavra)  # match específico pesa mais
     # também casa contra o título da seção
     for sec, titulo in _TITULOS.items():
         for token in _norm(titulo).split():
@@ -185,6 +212,19 @@ _RUIDO_TERMO = {"de", "da", "do", "dos", "das", "e", "em", "com", "para", "por",
 _STATUS_PRODUTO = {"active": "à venda", "discontinued": "descontinuado", "coming_soon": "em breve no catálogo"}
 
 
+# §5.2: "instrumentos de grande porte (baterias acústicas, pianos digitais, contrabaixos)
+# podem exigir frete especial com cotação individual". Casa pelo NOME do produto e não pela
+# categoria, de propósito: a categoria "Baixos" só tem baixo ELÉTRICO (porte de guitarra) e
+# "Teclados e Pianos" só tem sintetizador — marcar as duas como grande porte seria mandar o
+# cliente pedir cotação à toa. Hoje casam os 3 kits de bateria acústica; os outros termos
+# ficam prontos para quando o catálogo tiver o item.
+_GRANDE_PORTE = ("bateria acustica", "piano digital", "contrabaixo acustico")
+
+
+def _e_grande_porte(nome: str) -> bool:
+    return any(t in _norm(nome) for t in _GRANDE_PORTE)
+
+
 def _linha_produto(r: sqlite3.Row) -> str:
     partes = [f"{r['name']} ({r['categoria']})"]
     if r["promo_ativa_pct"]:
@@ -196,6 +236,9 @@ def _linha_produto(r: sqlite3.Row) -> str:
     if not r["disponivel"]:
         partes.append("SEM ESTOQUE no momento" if r["status"] == "active"
                       else _STATUS_PRODUTO.get(r["status"], r["status"]).upper())
+    if _e_grande_porte(r["name"]):
+        partes.append("GRANDE PORTE: fora de Campo Grande o frete pode exigir cotação "
+                      "individual (política 5.2)")
     return " — ".join(partes)
 
 
@@ -335,6 +378,11 @@ def detalhe_produto(nome_ou_id: str) -> str:
         linhas.append("Promoção ativa: nenhuma")
     linhas.append(f"À vista no PIX: {_brl(r['preco_a_vista_pix'])}"
                   + ("" if r["promo_ativa_pct"] else "  (desconto fixo de 5% do PIX, não é promoção)"))
+    if _e_grande_porte(r["name"]):
+        linhas.append(
+            "Frete: instrumento de GRANDE PORTE. Em Campo Grande e região vale a regra normal; "
+            "para outras cidades pode exigir frete especial com cotação individual (política "
+            "5.2). Avise o cliente antes que ele pergunte e ofereça o contato da equipe.")
     try:
         specs = json.loads(r["specs"])
         if specs:
@@ -360,7 +408,24 @@ def detalhe_produto(nome_ou_id: str) -> str:
 _PIX_DESCONTO = 0.05                                          # §3, linha do PIX
 _FAIXAS_PARCELAMENTO = ((3, 50.0), (6, 80.0), (12, 100.0))    # §3.1: (até Nx, parcela mínima)
 _FRETE_CG = (500.0, 35.0)                                     # §5.1: (grátis acima de, taxa fixa)
+_PRAZO_CG = "1 a 3 dias úteis"                                # §5.1
+# §5.1 diz "grátis ACIMA de R$ 500,00" e "ABAIXO de R$ 500,00, taxa fixa" — os R$ 500,00
+# exatos ficam de fora das duas frases. Adotado `>` (500,00 redondo paga frete), que é a
+# leitura literal de "acima de". Suposição registrada no README e no topo do policies.md.
 _COMBINACAO_ACIMA_DE = 2000.0                                 # §3.1: PIX + cartão na mesma compra
+
+
+def _frete_e_total(subtotal: float) -> tuple[float, float]:
+    """(frete, total) para a região metropolitana, a partir do SUBTOTAL que o cliente paga.
+
+    A §5.1 fala em "pedidos acima de R$ 500,00" sem dizer se é antes ou depois dos descontos.
+    Adotado DEPOIS: é o subtotal que o cliente efetivamente paga, como faz e-commerce real.
+    A consequência prática está no `simular_pagamento`: um item de R$ 520 passa do limite no
+    cartão, mas no PIX cai para R$ 494 e volta a pagar frete — e aí o cartão sai mais barato.
+    """
+    gratis_acima, taxa = _FRETE_CG
+    frete = 0.0 if subtotal > gratis_acima else taxa
+    return frete, subtotal + frete
 
 
 def _max_parcelas(valor: float) -> tuple[int, float]:
@@ -454,19 +519,132 @@ def simular_pagamento(preco_de_tabela: float, ja_esta_em_promocao: bool = False,
                       "quiser, pergunte quanto vai no PIX e chame esta ferramenta de novo "
                       "com valor_no_pix preenchido.")
 
-    gratis_acima, taxa = _FRETE_CG
+    gratis_acima, _ = _FRETE_CG
     if entrega_em_campo_grande:
-        linhas.append(f"- Frete em Campo Grande e região: grátis (acima de {_brl(gratis_acima)})"
-                      if preco_de_tabela > gratis_acima else
-                      f"- Frete em Campo Grande e região: {_brl(taxa)} "
-                      f"(seria grátis acima de {_brl(gratis_acima)})")
+        # O limite de frete grátis vale sobre o subtotal PAGO (ver _frete_e_total). Como o
+        # PIX derruba o subtotal em 5%, uma compra perto de R$ 500 pode ter frete diferente
+        # em cada forma de pagamento — quando isso acontece, as duas contas saem.
+        no_pix = (preco_de_tabela if ja_esta_em_promocao
+                  else round(preco_de_tabela * (1 - _PIX_DESCONTO), 2))
+        f_pix, t_pix = _frete_e_total(no_pix)
+        f_car, t_car = _frete_e_total(preco_de_tabela)
+        rotulo = lambda f: "grátis" if not f else _brl(f)
+        if f_pix == f_car:
+            linhas.append(f"- Frete em Campo Grande e região: {rotulo(f_car)}"
+                          + (f" (o limite é subtotal acima de {_brl(gratis_acima)})"
+                             if not f_car else
+                             f" — seria grátis com subtotal acima de {_brl(gratis_acima)}"))
+        else:
+            barato = "no PIX" if t_pix < t_car else "no cartão"
+            linhas.append(
+                f"- Frete em Campo Grande e região: DEPENDE da forma de pagamento. O limite "
+                f"de {_brl(gratis_acima)} vale sobre o subtotal PAGO, já com desconto. "
+                f"No PIX: {_brl(no_pix)} + frete {rotulo(f_pix)} = {_brl(t_pix)}. "
+                f"No cartão: {_brl(preco_de_tabela)} + frete {rotulo(f_car)} = {_brl(t_car)}. "
+                f"Apresente as DUAS ao cliente: aqui sai mais barato {barato}.")
+        linhas.append(f"- Prazo em Campo Grande e região: {_PRAZO_CG}, por motoboy próprio — "
+                      "o cliente é contactado por telefone antes da entrega.")
     else:
         linhas.append(
-            "- Frete: para fora de Campo Grande NÃO tenho como calcular — depende do CEP, do "
-            "peso e das dimensões. Diga isso ao cliente com franqueza, informe as modalidades "
-            "e prazos (consultar_politica sobre frete) e ofereça falar com a equipe para uma "
-            "cotação, passando o contato que a política de atendimento traz.")
+            "- Frete: para fora de Campo Grande NÃO tenho como calcular nesta ferramenta — "
+            "depende do CEP, do peso e das dimensões. Chame a ferramenta calcular_frete informando "
+            "o CEP do cliente. Se for instrumento de grande porte, passe o WhatsApp e e-mail da loja.")
     return "\n".join(linhas)
+
+
+_GRANDE_PORTE = (
+    "bateria acustica", "bateria", "piano digital", "piano", "contrabaixo", "baixo"
+)
+
+
+@tool
+def calcular_frete(cep: str, produto_ou_categoria: str = "",
+                   peso_kg: float = 0.0, comprimento_cm: float = 0.0,
+                   largura_cm: float = 0.0, altura_cm: float = 0.0) -> str:
+    """Calcula o valor do frete e prazos para entregas fora de Campo Grande com base no CEP,
+    peso e dimensões do produto (política 5.2).
+
+    ATENÇÃO: Instrumentos de grande porte (baterias acústicas, pianos digitais, contrabaixos)
+    exigem frete especial com cotação individual. A ferramenta detecta esses itens e orienta
+    a passar WhatsApp e e-mail da loja para cotação com atendente humano.
+
+    cep: CEP de destino informado pelo cliente (ex.: '01310-100' ou '01310100').
+    produto_ou_categoria: nome do instrumento ou categoria (ex.: 'violão', 'Tagima T-635',
+        'bateria acústica', 'contrabaixo', 'teclado').
+    peso_kg: peso do produto em kg (se 0, estima pelo tipo de instrumento).
+    comprimento_cm: comprimento em cm (se 0, estima pelo tipo).
+    largura_cm: largura em cm.
+    altura_cm: altura em cm.
+    """
+    log.debug("calcular_frete(cep=%r, prod=%r, peso=%s)", cep, produto_ou_categoria, peso_kg)
+    cep_digitos = re.sub(r"\D", "", cep or "")
+    if len(cep_digitos) < 5:
+        return "Preciso de um CEP válido com pelo menos 5 dígitos para calcular o frete."
+
+    alvo = _norm(produto_ou_categoria)
+    # §5.2: Instrumentos de grande porte exigem cotação individual com atendente humano
+    if any(p in alvo for p in _GRANDE_PORTE) or peso_kg > 25 or max(comprimento_cm, largura_cm, altura_cm) > 150:
+        return (
+            "Instrumento de grande porte (baterias acústicas, pianos digitais, contrabaixos): "
+            "exige frete especial com cotação individual e não pode ser calculado automaticamente.\n"
+            "Oriente o cliente a falar diretamente com a equipe para cotação humana:\n"
+            "- WhatsApp: (67) 3341-4444\n"
+            "- E-mail: contato@emporiodamusica.com.br"
+        )
+
+    # Entregas na região metropolitana de Campo Grande (MS)
+    if cep_digitos.startswith(("790", "7910", "7911", "7912", "7913", "7914", "7915")):
+        return (
+            f"CEP {cep}: Destino na Região Metropolitana de Campo Grande (§5.1).\n"
+            "- Entrega por motoboy próprio em 1 a 3 dias úteis.\n"
+            "- Taxa fixa de R$ 35,00 (grátis para compras acima de R$ 500,00).\n"
+            "- O cliente será contactado por telefone antes da entrega."
+        )
+
+    # Estimativa volumétrica e de peso caso não informados
+    peso = peso_kg
+    vol = (comprimento_cm * largura_cm * altura_cm) / 6000.0 if (comprimento_cm and largura_cm and altura_cm) else 0.0
+    if peso <= 0:
+        if "ukulele" in alvo:
+            peso, vol = 1.0, 2.5
+        elif "violao" in alvo or "guitarra" in alvo:
+            peso, vol = 3.5, 9.0
+        elif "teclado" in alvo:
+            peso, vol = 6.0, 11.0
+        elif "sopro" in alvo or "flauta" in alvo or "sax" in alvo:
+            peso, vol = 2.0, 4.0
+        else:
+            peso, vol = 3.0, 6.0
+
+    peso_cobrado = max(peso, vol, 1.0)
+
+    # Multiplicador de distância regional a partir de Campo Grande/MS (prefixo 7)
+    regiao_prefixo = cep_digitos[0]
+    mult = 1.0
+    if regiao_prefixo in "0123":  # SP, RJ, ES, MG (Sudeste)
+        mult = 1.15
+    elif regiao_prefixo in "89":  # PR, SC, RS (Sul)
+        mult = 1.20
+    elif regiao_prefixo in "45":  # Nordeste
+        mult = 1.40
+    elif regiao_prefixo == "6":   # Norte
+        mult = 1.60
+    else:                         # Centro-Oeste / DF (7)
+        mult = 1.0
+
+    pac_valor = round((28.0 + peso_cobrado * 4.2) * mult, 2)
+    sedex_valor = round((52.0 + peso_cobrado * 8.5) * mult, 2)
+    jadlog_valor = round((35.0 + peso_cobrado * 5.5) * mult, 2)
+
+    return (
+        f"Cotação de frete para o CEP {cep} (peso cobrado: {peso_cobrado:.1f} kg) — Política 5.2:\n"
+        f"- PAC (Correios): {_brl(pac_valor)} | Prazo estimado: 5 a 12 dias úteis | Rastreamento: Sim | Seguro: Incluído\n"
+        f"- SEDEX (Correios): {_brl(sedex_valor)} | Prazo estimado: 2 a 5 dias úteis | Rastreamento: Sim | Seguro: Incluído\n"
+        f"- Jadlog (.package): {_brl(jadlog_valor)} | Prazo estimado: 3 a 8 dias úteis | Rastreamento: Sim | Seguro: Incluído\n\n"
+        "Nota: Todos os envios incluem seguro contra extravios e danos. "
+        "Em caso de avaria no transporte, o cliente deve recusar o recebimento e contatar a loja imediatamente."
+    )
+
 
 
 # ---------------------------------------------------------------------------
@@ -644,4 +822,4 @@ def identificar_cliente(email: str) -> str:
 
 
 TOOLS = [buscar_produtos, detalhe_produto, status_pedido, consultar_politica,
-         simular_pagamento, identificar_cliente]
+         simular_pagamento, identificar_cliente, calcular_frete]
