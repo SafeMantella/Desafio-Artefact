@@ -74,7 +74,6 @@ Detalhe e justificativas: `CLAUDE.md` e (no fim) `README.md`.
 - [x] persona: assistente batizado de **melodIA** (decisão do Pedro) — registrado no README §9
 - [x] push; repo público confirmado
 - [x] `git clone` limpo → venv → `build_db.py` → `test_agent.py` (partes offline)
-- [ ] opcional (Pedro): rodar `streamlit run app.py` num clone limpo com o LM Studio, e decidir se mantém `desafio_tecnico_ai_eng_artefact.pdf` no repo
 
 ## Parte 9 — Correções pós-análise (@ANALISTA)
 
@@ -153,3 +152,24 @@ Achados que a validação levantou e que **não** foram mexidos (mudar o prompt 
 42 respostas, contra a regra de parcimônia do prompt; e na fronteira do corte o agente pode ver
 o próprio eco de um fato já podado ("Olá, Pedro!") sem a origem — uma vez respondeu com a recusa
 de fora-de-escopo, outra percebeu sozinho. Decisão do Pedro se vira correção.
+
+## Parte 11 — Revisão do README (`brainstorm.txt`)
+
+13 pontos anotados pelo Pedro relendo o README; cada um investigado contra o código e o
+dado real, veredito dele, implementação por fase com um commit por fase.
+
+- [x] item 1 — cifrão escapado em `app.py`, `run_examples.py` e nos 5 `examples/*.md`
+- [x] item 7 — dinheiro normalizado no ETL (`data/` intocado)
+- [x] item 14 a/b — marca da descrição corrigida no ETL a cada build (6 produtos, com assert)
+- [x] item 14 d — `status_pedido` avisa quando total ≠ soma dos itens
+- [x] item 5 — `test_policies_sem_perda`: curadoria não perdeu número, valor nem e-mail
+- [x] item 12a — roteamento das 10 seções de política travado por teste
+- [x] item 9 — identidade só por pedido + e-mail exato (heurística de nome deletada)
+- [x] item 13 — `simular_pagamento`, com as constantes conferidas contra `policies.md`
+- [x] item 14 c — prompt oferece as specs depois de apresentar um instrumento
+- [x] item 12b — eval de 20 → 28 casos (5 de política, 2 de parcelamento, 1 de identidade)
+- [x] itens 2, 3, 6, 8, 11 — README: armadilhas dos dados, uma busca = uma chamada,
+      conta de preço, por que não `date.today()`, limitação de hardware / usuário único
+- [x] item 4 — decidido NÃO: `data/` são fixtures, sem elas o repo não é reproduzível
+- [ ] **Pedro, com LM Studio:** `python run_examples.py` (o exemplo 04 ainda identifica por
+      nome) e `python test_live.py` (relatório versionado ainda descreve 20 casos)

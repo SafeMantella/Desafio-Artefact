@@ -8,6 +8,19 @@ O agente assume a persona da loja, responde por mensagem de texto e sabe **quand
 dados** (catálogo, pedidos, promoções) e **quando consultar as políticas** (trocas, horários,
 pagamento, frete, garantia). Perguntas fora do escopo da loja são recusadas educadamente.
 
+> ### ⏱️ Para o agente, hoje é **25/03/2026**
+>
+> O dataset fornecido é um *snapshot*: os 20 pedidos vão de out/2025 a **22/03/2026**.
+> Contra a data real do relógio, todo pedido estaria fora de todo prazo (7 dias de
+> arrependimento, 30 de defeito, 90 de garantia) e a demo do enunciado — *"me arrependi,
+> posso devolver?"* — nunca teria um caso positivo. Por isso o "hoje" do agente é uma data
+> de referência ancorada logo após o último pedido, e não `date.today()`.
+>
+> Vale para tudo o que você vai ver aqui: as conversas de [`examples/`](examples/), os casos
+> de [`eval_report.md`](eval_report.md) e os testes. Muda numa variável —
+> `DATA_REFERENCE_DATE` no `.env` — sem tocar em código. **O porquê completo está na
+> [decisão 5](#5-conceito-de-hoje--data_reference_date-configurável).**
+
 ---
 
 ## O que dá para perguntar
@@ -19,11 +32,13 @@ pagamento, frete, garantia). Perguntas fora do escopo da loja são recusadas edu
   política, percebe que o prazo de arrependimento conta do **recebimento** (dado que o sistema
   não tem) e pergunta ao cliente quando ele recebeu antes de responder
 - *"Quais ukuleles até 500 reais?"* → a faixa vale sobre o preço **efetivo**: entra o que está a 439,20  com promoção, mesmo com tabela em R$ 549
+- *"Tem violão de tampo sólido em spruce?"* ou *"teclado de 61 teclas"* → busca pela
+  **especificação**, não pelo modelo — o caso do músico que já sabe o que quer
 - *"Vocês têm saxofone?"* → a loja trabalha com sopros, mas o catálogo está sem itens da categoria — e o agente diz isso, em vez de listar outra coisa
 - *"Vocês vendem cordas de violão?"* → explica que a loja não trabalha com acessórios
 - *"Me passa uma receita de bolo?"* → recusa educadamente e volta ao contexto da loja
 
-Cinco conversas completas estão em [`examples/`](examples/), e a avaliação automática de 20
+Cinco conversas completas estão em [`examples/`](examples/), e a avaliação automática de 28
 cenários (3 rodadas cada) em [`eval_report.md`](eval_report.md).
 
 ---
@@ -35,7 +50,7 @@ cenários (3 rodadas cada) em [`eval_report.md`](eval_report.md).
 - **Python 3.11+**
 - **[LM Studio](https://lmstudio.ai/)** com um modelo que suporte *tool use* / function calling.
   A avaliação versionada em [`eval_report.md`](eval_report.md) é com **Qwen3.8-27B**
-  (`qwen/qwen3.8-27b`): 20/20 casos em 3 rodadas cada. O projeto foi construído com
+  (`qwen/qwen3.8-27b`), 3 rodadas por caso. O projeto foi construído com
   **Qwen3.5-9B** (`qwen/qwen3.5-9b`), que também roda — mais rápido e menos confiável no
   *tool calling*; a família Qwen2.5-Instruct (7B+) e Llama-3.1-8B-Instruct servem como
   alternativas mais leves. Modelos maiores respondem melhor em português e chamam as
@@ -55,6 +70,8 @@ python build_db.py                 # gera emporio.db
 
 # 3. Configuração
 cp .env.example .env               # ajuste MODEL para o id exato carregado no LM Studio
+                                   # DATA_REFERENCE_DATE=2026-03-25 já vem preenchida:
+                                   # é o "hoje" do agente (ver o quadro no topo)
 
 # 4. LM Studio: carregue o modelo e clique em "Start Server" (porta 1234).
 #    Sugestão de carregamento: GPU offload no máximo + contexto máximo
@@ -72,21 +89,25 @@ Variáveis de ambiente (`.env`):
 | `OPENAI_BASE_URL` | `http://localhost:1234/v1` | endpoint do LM Studio (API compatível com OpenAI) |
 | `OPENAI_API_KEY` | `lm-studio` | qualquer valor não vazio; o LM Studio ignora |
 | `MODEL` | `qwen/qwen3.5-9b` | id do modelo carregado no LM Studio |
-| `DATA_REFERENCE_DATE` | `2026-03-25` | "hoje" do agente — ver decisão 4 abaixo |
+| `DATA_REFERENCE_DATE` | `2026-03-25` | **"hoje" do agente.** O dataset é um snapshot; sem isso todo pedido fica fora de prazo — ver [decisão 5](#5-conceito-de-hoje--data_reference_date-configurável) |
 
 ### Testes
 
 ```bash
-python test_agent.py             # 8 checks determinísticos, sem LLM — segundos
-python test_live.py              # 20 casos × 3 rodadas contra o LM Studio — horas
+python test_agent.py             # 11 checks determinísticos, sem LLM — segundos
+python test_live.py              # 28 casos × 3 rodadas contra o LM Studio — horas
 python test_live.py --rodadas 1  # 1 rodada só, para iterar
 python test_live.py identidade   # só os casos cujo nome contém "identidade"
 ```
 
+- Os dois usam `DATA_REFERENCE_DATE=2026-03-25`: asserts de prazo ("há 79 dias", "7 dias")
+  só fazem sentido nessa âncora. `test_agent.py` checa isso logo no início e falha dizendo
+  qual data ele esperava, em vez de acusar um erro que seria de configuração.
 - **`test_agent.py`** cobre a lógica não-trivial sem chamar o modelo: views do ETL (preço
-  promocional, PIX não-cumulativo, disponibilidade), roteamento do `consultar_politica`, as
-  três tools de dados (incl. os ataques à verificação de identidade), a poda de histórico e a
-  montagem do grafo.
+  promocional, PIX não-cumulativo, disponibilidade, normalização de dinheiro, correção de
+  marca), roteamento das 10 seções de `consultar_politica`, a curadoria de `policies.md` sem
+  perda, as tools de dados (incl. identidade contra os 20 pedidos), a aritmética de
+  parcelamento, a poda de histórico e a montagem do grafo.
 - **`test_live.py`** é a avaliação do agente: cada caso declara as mensagens do cliente, a(s)
   ferramenta(s) que deviam ser chamadas e o que a resposta final deve / não deve conter (preço
   certo, sem promoção inventada, sem PII vazada em recusa de identidade, sem política
@@ -118,18 +139,23 @@ python test_live.py identidade   # só os casos cujo nome contém "identidade"
                                                │  convert_policies.py: PDF → policies_raw.md
 ```
 
-O modelo recebe as quatro ferramentas e decide, a cada turno, se responde direto ou se chama
+O modelo recebe as cinco ferramentas e decide, a cada turno, se responde direto ou se chama
 uma delas. As tools de dados executam **SQL parametrizado** (o LLM nunca escreve SQL). A tool
 de política devolve as seções relevantes do manual em markdown.
 
-### As 4 ferramentas (tools)
+### As 5 ferramentas (tools)
 
 | Ferramenta | Quando o agente usa | Retorno |
 |---|---|---|
-| `buscar_produtos(termo, categoria, preco_min, preco_max, apenas_disponiveis)` | catálogo, opções por tipo/preço, disponibilidade | lista com preço de tabela, preço promocional e preço no PIX. A faixa de preço filtra o **preço efetivo** (o promocional quando há promoção) |
+| `buscar_produtos(termo, categoria, preco_min, preco_max, apenas_disponiveis)` | catálogo, opções por tipo/preço, disponibilidade, **busca por especificação** (`termo` casa no nome E nas specs: "tampo spruce", "61 teclas", "7 cordas") | lista com preço de tabela, preço promocional e preço no PIX. A faixa de preço filtra o **preço efetivo** (o promocional quando há promoção) |
 | `detalhe_produto(nome_ou_id)` | preço/specs/promoção de **um** instrumento | ficha completa; desambigua se o nome casar vários |
 | `status_pedido(order_id, identificador)` | andamento de um pedido | status, itens, valor, previsão, rastreio, dias **desde a compra** (e o aviso de que não há data de recebimento) — **só após conferir identidade** |
 | `consultar_politica(topico)` | horário, endereço, pagamento, troca/devolução, frete, garantia, LGPD, escopo | seção(ões) do `policies.md` |
+| `simular_pagamento(valor, entrega_em_campo_grande)` | **conta** sobre um valor: quantas parcelas cabem, quanto fica cada uma, preço no PIX, frete metropolitano | simulação pronta; para fora de Campo Grande declara que o frete não é calculável e manda oferecer contato humano |
+
+Uma busca é **uma** chamada: `buscar_produtos` devolve a lista inteira (até 20 itens) numa
+só ida à ferramenta — 20 resultados não são 20 tool calls. `detalhe_produto` é que é de um
+instrumento por chamada, porque o seu trabalho é desambiguar um nome.
 
 ---
 
@@ -170,8 +196,8 @@ raciocinar e chamar ferramentas até ter a resposta. O modelo fala com o LM Stud
 
 - **Custo zero e offline.** Nenhuma chave de API, nenhuma cota.
 - **Privacidade.** O manual da loja cita a LGPD e o atendimento lida com nome, e-mail e pedidos de clientes. Rodar o modelo localmente evita mandar esses dados para uma API de terceiros. Um argumento real de conformidade, não só de custo.
-- **Trade-off assumido:** *tool calling* de modelos abertos pequenos é menos confiável que o de modelos frontier. Mitigações: só 4 ferramentas, descrições ricas, `temperature=0`, e um system prompt curto. O código é agnóstico ao modelo (`base_url` + `MODEL` no `.env`), então trocar por uma API é mudar duas variáveis.
-- **Recomendação:** Qwen3.8-27B (`qwen/qwen3.8-27b`) — é o modelo do relatório versionado: **20/20 casos, 3 rodadas cada** ([`eval_report.md`](eval_report.md)). O Qwen3.5-9B, com que o projeto foi construído, é a alternativa leve: bem mais rápido, e foi com ele que apareceram os erros de *tool calling* que viraram regra de prompt. Modelos frontier via API resolveriam latência e confiabilidade de uma vez, ao custo de mandar PII para fora.
+- **Trade-off assumido:** *tool calling* de modelos abertos pequenos é menos confiável que o de modelos frontier. Mitigações: só 5 ferramentas, descrições ricas, `temperature=0`, e um system prompt curto. O código é agnóstico ao modelo (`base_url` + `MODEL` no `.env`), então trocar por uma API é mudar duas variáveis.
+- **Recomendação:** Qwen3.8-27B (`qwen/qwen3.8-27b`) — é o modelo do relatório versionado ([`eval_report.md`](eval_report.md)), que traz a taxa e a latência de cada caso da última execução completa. O Qwen3.5-9B, com que o projeto foi construído, é a alternativa leve: bem mais rápido, e foi com ele que apareceram os erros de *tool calling* que viraram regra de prompt. Modelos frontier via API resolveriam latência e confiabilidade de uma vez, ao custo de mandar PII para fora.
 - **A tensão que esta escolha assume:** o problema de negócio do enunciado é *volume* — "a equipe está sobrecarregada com perguntas recorrentes". Os números são medidos, não estimados ([`eval_report.md`](eval_report.md), 60 execuções): **mediana de 56 s por caso**, e 415 s no pior (uma conversa de 7 turnos). Sem *streaming* nem fila, isso **demonstra** que a lógica do agente funciona, mas não ataca o volume: um atendente esperando um minuto por resposta não está menos sobrecarregado. Este protótipo otimiza para custo, privacidade e reprodutibilidade offline; um deployment real contra o volume seria outra decisão — modelo servido com *batching* (ou API), resposta em *streaming*, e uma fila de atendimento. O agente aqui é a peça que se prova primeiro; a camada de serving é o passo seguinte, não um detalhe.
 
 ### 3. Políticas — conversão com `pymupdf4llm` + ferramenta de seção (sem embeddings)
@@ -195,7 +221,48 @@ relevantes.
   - `disponivel` = `status = 'active'` e `stock_quantity > 0`.
 - **`v_pedido_item`**: itens do pedido com nome e preço do produto.
 
-**Por que pandas no ETL:** `pd.read_csv(...).to_sql(...)` resolve o carregamento em duas linhas por arquivo e já infere os tipos das colunas com int e decimal misturados. É a única dependência que o `build_db.py` usa; `csv` da stdlib + `INSERT` na mão seria mais código para o mesmo resultado.
+**Por que pandas no ETL:** `pd.read_csv(...).to_sql(...)` resolve o carregamento em duas linhas por arquivo e já infere os tipos das colunas com int e decimal misturados (`products.price_brl` tem 53 valores inteiros e 12 decimais; `orders.total_brl` idem). A normalização para 2 casas é um passo **explícito** do `build_db.py` — inferência silenciosa é ótima até o dia em que muda. É a única dependência que o `build_db.py` usa; `csv` da stdlib + `INSERT` na mão seria mais código para o mesmo resultado.
+
+#### Armadilhas dos dados
+
+O dataset é sintético e tem peculiaridades que não dão erro — dão resposta errada, se você
+tratar o dado com ingenuidade. Cada uma virou código:
+
+| Armadilha | Onde aparece | O que o código faz |
+|---|---|---|
+| Linhas fora de ordem | `products.csv`: ids 81–130, depois 145, depois 131–144 | ordenar por preço/`product_id`, nunca confiar na ordem do arquivo |
+| `status = 'active'` ≠ disponível | produto 96 (Giannini GF-3D) é `active` com estoque 0 | `disponivel = active AND stock > 0` → 61 de 65. Foi essa armadilha que produziu o bug de o agente dizer "não está no catálogo" para item que existe sem estoque |
+| Promoções duplicadas | `promotions.csv` tem 25 linhas, só 4 ativas, com produto repetido | a view agrega `MAX(discount_percent)` entre as ativas (§6.2: não são cumulativas) |
+| Sem data de entrega efetiva | `orders.csv` tem previsão, não recebimento | `status_pedido` declara isso e o agente pergunta ao cliente (ver decisão 5) |
+| Sem preço unitário no pedido | `order_items.csv` só tem quantidade | `status_pedido` informa o total do pedido e avisa quando ele diverge da soma a preço de tabela |
+| Nome × descrição se contradizem | 6 produtos (ver abaixo) | corrigido no ETL a cada build |
+
+#### Uma correção declarada no dado
+
+10 produtos (ids 135–144) têm nome de template — `Music Man Bass 1X Electric Bass`,
+`Bateria Acústica Yamaha Kit 1 Studio`, `Teclado Sintetizador Korg Synth 1 Pro` — e em **6**
+deles a descrição cita uma marca **diferente** da do nome. Não é typo: o gerador montou nome
+e descrição em passes independentes.
+
+| Produto | Nome diz | Descrição dizia |
+|---|---|---|
+| 135 | Music Man | Fender Jazz Bass |
+| 137 | Yamaha | Ibanez |
+| 139 | Yamaha | Pearl Export |
+| 140 | Pearl | Tama |
+| 142 | Korg | Roland |
+| 144 | Roland | Yamaha |
+
+Deixar como estava significa o agente ler a descrição e oferecer ao cliente uma marca que a
+loja não vende com aquele nome. Então `build_db.py` **corrige a marca da descrição a cada
+build**, por regra (lista explícita de marcas + match de palavra inteira), com um `assert`
+de que são exatamente 6 linhas — se o dado mudar, o build falha em vez de reescrever o
+catálogo em silêncio.
+
+Duas coisas ficam de fora, de propósito: **os arquivos em `data/` não são tocados** (a
+correção vive no ETL, sobre o DataFrame), e só a **marca** é trocada — nome de modelo alheio
+("Jazz Bass", "Export") permanece, porque reescrevê-lo seria inventar dado em vez de
+resolver a contradição.
 
 **Por que SQLite e não manter os DataFrames na memória:** o SQLite deixa a modelagem explícita (tabelas + views documentam as regras de negócio), dá joins e agregações limpos, e é o mesmo arquivo que o checkpointer de conversa usa. O LLM nunca gera SQL — as tools usam consultas fixas com parâmetros.
 
@@ -222,14 +289,29 @@ arrependi, posso devolver?") só tinha resposta negativa. Perguntando a data de 
 caso positivo passa a existir — e virou caso de eval
 (`devolucao_recebido_dentro_do_prazo`).
 
+**Por que não `date.today()` como padrão:** cair no relógio real quando a variável não
+existe transformaria, em silêncio, toda resposta de prazo em "fora do prazo" na máquina de
+quem esqueceu o `.env`. Um default fixo erra de forma previsível; um default dinâmico erra
+de forma que ninguém percebe.
+
 ### 6. Verificação de identidade — consciente de LGPD
 
-Um pedido expõe PII (nome, e-mail, itens, previsão de entrega). `status_pedido` (função
-`_identidade_confere` em `tools.py`) só libera os dados se o `identificador` for o
-**e-mail exato** ou trouxer o **primeiro nome do cliente + ao menos duas partes distintas
-do nome cadastrado**, com match de **palavra inteira** e **sem nenhuma palavra que não seja
-do nome**. Rejeita: um nome só ("Ana"), um sobrenome só ("Santos"), pedaço de palavra
-("ana" ⊂ "Mariana"), nome repetido ("Ana Ana"), e "spray" de nomes comuns.
+Um pedido expõe PII (nome, e-mail, itens, valor, previsão de entrega, rastreio).
+`status_pedido` só libera os dados com **número do pedido + e-mail exato** do cadastro
+(`_identidade_confere` em `tools.py`, normalizando caixa e acento). Nome não serve, nem o
+nome completo do próprio cliente.
+
+**Como chegamos aqui.** A primeira versão aceitava nome por substring e era 100% burlável
+às cegas; a segunda, por agregação de partes do nome, ~70%. A terceira exigia primeiro nome
++ duas partes distintas, com match de palavra inteira — resistia a spray de nomes comuns e a
+"Ana Ana", mas ainda deixava colidir três pares de clientes cujo nome é subconjunto do
+outro. Trocar por e-mail exato apagou a heurística inteira e o resíduo junto: a verificação
+virou uma comparação de string, que não tem como regredir.
+
+**O trade-off, assumido:** ficou mais seguro e menos amigável. O cliente que oferece o nome
+completo é recusado e precisa confirmar o e-mail da compra — que é o que um e-commerce real
+pede. `test_identidade_nao_burlavel` varre os 20 pedidos: e-mail certo abre, nome recusa,
+e-mail com um caractere trocado recusa.
 
 ### 7. Histórico de conversa — checkpointer SQLite do LangGraph
 
@@ -279,25 +361,77 @@ Regra de política: vive só no texto, não no código nem no prompt.
 
 Dois níveis, ambos com `assert` e um `main()` próprio, sem pytest:
 
-- **`test_agent.py`** (8 funções, sem LLM): a lógica determinística — views do ETL, roteamento de política, as tools de dados, os ataques à verificação de identidade (repetição, spray, sobrenome, *bound* de colisão cruzada) e a poda de histórico. Rápido, roda em qualquer lugar.
-- **`test_live.py`** (20 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta — cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é o que trava regressão de comportamento quando o prompt muda.
+- **`test_agent.py`** (11 funções, sem LLM): a lógica determinística — views do ETL e a correção de marca, roteamento das 10 seções de política, as tools de dados, a verificação de identidade contra os 20 pedidos, a aritmética de `simular_pagamento` (e a conferência das constantes contra o manual) e a poda de histórico. Inclui `test_policies_sem_perda`, que garante que a curadoria de `policies.md` mexeu em forma e não em conteúdo: todo número, valor e e-mail do `policies_raw.md` sobrevive no curado. Rápido, roda em qualquer lugar.
+- **`test_live.py`** (28 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta — cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é o que trava regressão de comportamento quando o prompt muda.
 
 Evals: Cada execução escreve **[`eval_report.md`](eval_report.md)** com a taxa e a latência (mediana e pior caso) de cada caso. O arquivo é versionado de propósito: quem for avaliar o projeto vê o número sem precisar instalar o LM Studio e baixar o modelo.
 
 pytest aqui seria uma dependência a mais sem ganho nessa escala.
+
+### 12. Parcelamento e frete — a única regra de política que virou código
+
+`simular_pagamento` calcula quantas parcelas cabem num valor, quanto fica cada uma, o preço
+no PIX e o frete metropolitano. Isso contraria a convenção do projeto (regra de política
+vive no texto, não no código) e a exceção é deliberada: **é aritmética, e aritmética é onde
+o modelo local alucina**. "R$ 549 em 12x" dá parcela de R$ 45,75 — abaixo do mínimo de
+R$ 100 da faixa — e o agente respondia "pode sim" quando tinha que fazer a conta de cabeça
+a partir do texto da §3.1. O teto real ali é 6x de R$ 91,50.
+
+Para a exceção não virar dívida escondida, ela vem com um guard-rail:
+
+1. Todos os números ficam numa **tabela única** no topo do módulo, com o parágrafo do manual
+   anotado ao lado (`_PIX_DESCONTO`, `_FAIXAS_PARCELAMENTO`, `_FRETE_CG`).
+2. `test_simular_pagamento` confere **cada constante contra o texto de `policies.md`**. Se o
+   manual mudar e o código não, o teste quebra dizendo qual constante divergiu. É o que
+   torna a duplicação sustentável em vez de invisível.
+
+O frete entra só na metade calculável (região metropolitana: grátis acima de R$ 500, senão
+R$ 35). Para outras cidades depende de CEP, peso e dimensões: a ferramenta **declara que não
+calcula**, manda informar as modalidades da §5.2 e oferecer o contato da equipe para
+cotação. Uma tool que só reimprimisse a §5 seria uma segunda porta para a mesma fonte —
+`consultar_politica` já faz isso.
 
 ---
 
 ## Limitações conhecidas
 
 - **Confiabilidade do *tool calling* depende do modelo local.** Um modelo fraco pode responder preço/estoque sem chamar a ferramenta, ou vazar uma resposta fora de escopo.
+- **Um usuário por vez, por construção.** O protótipo roda o modelo na máquina de quem o
+  demonstra, e a arquitetura assume isso: `@st.cache_resource` dá **uma** instância do agente
+  por processo, o checkpointer abre **uma** conexão SQLite (`check_same_thread=False`) e o
+  LM Studio atende um request por vez. Duas pessoas simultâneas disputam os três. O
+  isolamento existente é por `thread_id`, não por sessão nem por usuário — não há noção de
+  quem está falando. Multiusuário de verdade pede modelo servido à parte, pool de conexões
+  e sessão autenticada; nada disso é difícil, mas nenhum deles cabia no hardware desta demo.
+- **O histórico cresce sem TTL.** O `SqliteSaver` grava o estado inteiro a cada passo do
+  grafo: depois das conversas de teste, o `emporio.db` estava com 95 MB e 1.905 checkpoints
+  para 65 produtos e 20 pedidos. Num protótipo local é irrelevante; num deploy pediria
+  expiração ou um store separado do catálogo.
 - **Latência vs. o problema de volume.** Mediana de 56 s por caso e 415 s no pior, medidos em 60 execuções com o 27B local, sem streaming. O 9B é bem mais rápido, com tool calling menos confiável.
 - **Sem guard determinístico de escopo.** A recusa de assuntos fora da loja é só via prompt.
-- **Verificação de identidade não é autenticação.** Exige nome+sobrenome ou e-mail exato (ver decisão 6), mas não há login, código de confirmação nem rate limit — e `order_id` é sequencial. Suficiente para protótipo, não para produção.
-- **Busca de produto é lexical** (casa palavras no nome e nas specs). "Violão para iniciante" não vira uma busca semântica.
+- **Verificação de identidade não é autenticação.** Exige o e-mail exato do cadastro (ver decisão 6), mas não há login, código de confirmação nem rate limit — e `order_id` é sequencial. Suficiente para protótipo, não para produção.
+- **Busca de produto é lexical** (casa palavras no nome e nas specs, todas em E lógico).
+  Dá para pesquisar por especificação — `tools._SPECS_PT` traduz o substantivo em PT-BR
+  para a chave inglesa do JSON (`tampo`→`top`, `teclas`→`keys`), e número solto casa por
+  palavra inteira para "7 cordas" não trazer o Yamaha C70. O teto é o dado: os VALORES
+  misturam idioma no mesmo campo ("Mogno" no Kala, "Mahogany" na Gibson), então `mogno`
+  não acha a Gibson. Cobrir isso pede busca semântica, não mais entradas na tabela.
+  "Violão para iniciante" também não funciona: está só em `description`, que fica fora do
+  match de propósito (ver o ruído nome × descrição abaixo).
 - **`consultar_politica` é por palavra-chave.** Uma pergunta com vocabulário muito distante das palavras mapeadas pode não casar a seção certa.
 - **Frete e parcelamento não são calculados** — o agente informa as regras da política, não simula valores para um CEP ou uma compra específica.
-- **Dados sintéticos com ruído** (nomes x descrições inconsistentes) limitam o que a descrição pode ser usada para responder.
+- **Preço por item de pedido não existe no dado.** `order_items.csv` só tem quantidade. O
+  que a loja cobrou está apenas no total do pedido, e em 2 dos 20 pedidos ele não bate com a
+  soma a preço de tabela (pedido 3: R$ 3.450 contra R$ 3.498; pedido 20: R$ 1.400 contra
+  R$ 1.488) — houve desconto na venda que o dataset não registra. `status_pedido` avisa e o
+  agente não recalcula item a item.
+- **Ruído que sobrou no dataset sintético.** A contradição de marca entre nome e descrição é
+  corrigida no ETL (ver §4), mas duas outras ficam: a descrição do produto 142 fala em
+  "88 teclas" enquanto `specs` diz `keys: 61`, e 10 produtos continuam com nome de template
+  (`Bass 1X`, `Kit 1 Studio`). Corrigi-las seria escolher arbitrariamente qual das duas
+  colunas é a verdade. A regra do projeto é confiar nos campos **estruturados** (`name`,
+  `price_brl`, `category_id`, `stock_quantity`, `status`) e tratar `description` como texto
+  livre — nunca como fonte de fato.
 
 ## Com mais tempo
 
@@ -321,7 +455,7 @@ pytest aqui seria uma dependência a mais sem ganho nessa escala.
 
 Todo o projeto foi construído em par com o **Claude Code** — Claude Sonnet na construção e Claude Opus na revisão técnica e na rodada de correções que ela gerou, no seguinte fluxo:
 
-1. **Leitura e entrevista (plan mode).** O Claude leu o enunciado, o manual de políticas e os 6 CSVs, mapeou os *quirks* dos dados, e então me entrevistou — **uma decisão de cada vez** — sobre as escolhas técnicas (abordagem do agente, acesso às políticas, camada de dados, data de referência, histórico, identificação, interface, modelo). Para cada uma ele apresentou opções com trade-offs e uma recomendação; **as decisões foram minhas**.
+1. **Leitura e entrevista (plan mode).** O Claude leu o enunciado, o manual de políticas e os 6 CSVs, mapeou as armadilhas dos dados, e então me entrevistou — **uma decisão de cada vez** — sobre as escolhas técnicas (abordagem do agente, acesso às políticas, camada de dados, data de referência, histórico, identificação, interface, modelo). Para cada uma ele apresentou opções com trade-offs e uma recomendação; **as decisões foram minhas**.
 2. **O loop decisão → README.** Cada decisão fechada foi registrada na seção "Decisões técnicas" com a motivação, antes de virar código. Ajustes feitos depois (ex.: regras de prompt após ver falhas em conversas reais, ou o nome "melodIA") entram pelo mesmo loop: muda a decisão, muda a seção.
 3. **Plano e execução por partes.** As decisões viraram um plano e um `CHECKLIST.md` em 8 partes. Cada parte: implementar → escrever o teste (`test_agent.py`, `assert` puro) → rodar → **um commit por parte** (histórico incremental, sem *force-push*, como o enunciado pede).
 4. **Documentação viva.** `CLAUDE.md` (visão geral + decisões + armadilhas dos dados) e `CHECKLIST.md` foram mantidos atualizados ao longo do caminho.

@@ -32,7 +32,7 @@ Entregáveis: repo público + `README.md` (setup + justificativas + limitações
 | 3 | Dados (CSVs) | ETL → **SQLite** (`emporio.db`) + views; SQL **parametrizado** nas tools (LLM não escreve SQL) | Mostra modelagem; joins/agregações limpos; sem risco de query gerada errada. |
 | 4 | Conceito de "hoje" | Config `DATA_REFERENCE_DATE` (default `2026-03-25`) | Dataset é snapshot; pedidos vão até 2026-03-22. Sem isso, toda política de prazo dá "vencido". **Parte 10:** §4.1 conta do *recebimento*, não da compra — a tool declara que não tem essa data e o agente pergunta ao cliente. |
 | 5 | Histórico de conversa | Checkpointer **`SqliteSaver`** do LangGraph, por `thread_id` + poda com `trim_messages` no `pre_model_hook` | Persiste entre execuções, reaproveita o SQLite. Persistir tudo ≠ reenviar tudo: `MAX_HISTORY_TOKENS` (8000) evita estourar a janela do modelo local em conversa longa. |
-| 6 | Identificação do cliente | `status_pedido`: e-mail exato OU (primeiro nome + ≥2 partes distintas do nome, match de palavra inteira, sem palavra fora do nome). `_identidade_confere` em `tools.py`; `test_identidade_nao_burlavel` | LGPD sem auth. v1 (substring) e v2 (agregação) eram burláveis 100%/70% às cegas — v3 fecha isso. Resíduo conhecido: 3 pares de clientes com nome-subconjunto colidem (não é ataque cego); documentado no README §6. |
+| 6 | Identificação do cliente | `status_pedido`: número do pedido + **e-mail exato** (normalizado). Nome não serve. `_identidade_confere` em `tools.py`; `test_identidade_nao_burlavel` varre os 20 pedidos | LGPD sem auth. v1 (substring) e v2 (agregação) eram burláveis 100%/70%; v3 (nome + 2 partes) resistia a spray mas deixava 3 pares colidirem. v4 troca a heurística inteira por uma comparação de string: apaga o resíduo e não tem como regredir. Trade-off: menos amigável, é o que e-commerce real pede. |
 | 7 | Interface | **Streamlit** | Chat web pra demo; `thread_id` em `st.session_state`. |
 | 8 | Modelo / provedor | **LM Studio** local; código agnóstico (base_url + nome via `.env`) | Sem custo, offline, PII não sai da máquina. `temperature=0` (Parte 10) para o eval medir o modelo, não o sampler. Números da última rodada: `eval_report.md`. |
 
@@ -54,12 +54,13 @@ build_db.py        ETL: os 6 CSVs de data/ → emporio.db (tabelas + views)   [P
 convert_policies.py  PDF de políticas → policies_raw.md (pymupdf4llm)         [Parte 2]
 policies_raw.md    saída bruta da conversão (artefato reproduzível)          [Parte 2]
 policies.md        policies_raw.md curado (headings limpos, divergências resolvidas) — usado pelo agente  [Parte 2]
-tools.py           as 4 tools LangChain (buscar_produtos, detalhe_produto,
-                   status_pedido, consultar_politica)                        [Partes 2-3]
+tools.py           as 5 tools LangChain (buscar_produtos, detalhe_produto,
+                   status_pedido, consultar_politica, simular_pagamento)      [Partes 2-3, 11]
 prompts.py         system prompt / persona / regras                         [Parte 4]
 agent.py           monta o ReAct agent + checkpointer                       [Parte 4]
 app.py             Streamlit                                                [Parte 5]
-test_agent.py      8 checks assert-based, sem LLM (views, política, tools, identidade, poda)  [ao longo]
+test_agent.py      11 checks assert-based, sem LLM (views+ETL, política sem perda,
+                   roteamento das 10 seções, tools, identidade, parcelamento, poda)  [ao longo]
 test_live.py       avaliação ponta a ponta contra o LM Studio, k rodadas por caso      [Parte 9-10]
 eval_report.md     saída da última execução do eval (taxa + latência por caso)      [Parte 10]
 examples/          3-5 conversas de exemplo                                 [Parte 6]
@@ -77,9 +78,10 @@ data/              dados fornecidos — NÃO alterar
 
 ## 5. Estado atual
 
-**Completo + duas rodadas de correções pós-análise.** Ver `CHECKLIST.md` (Partes 9 e 10).
-Partes 0-8: ETL, políticas, 4 tools, agente (melodIA), Streamlit, 5 exemplos, README, clone
-limpo. `test_agent.py`: 7/7. `test_live.py`: 16/16 (última execução). Correções: #4 identidade
+**Completo + três rodadas de correções pós-análise.** Ver `CHECKLIST.md` (Partes 9, 10 e 11).
+Partes 0-8: ETL, políticas, tools, agente (melodIA), Streamlit, 5 exemplos, README, clone
+limpo. Hoje: `test_agent.py` 11/11; `test_live.py` com 28 casos (relatório versionado ainda
+é o da Parte 10, com 20 — regerar). Correções: #4 identidade
 (v3 + resíduo documentado), #1 grounding (mitigado), #3/#5 (README), #2 (eval harness),
 #2b eval endurecido (16 casos, oráculo de PII derivado, whitelist no lugar de blacklist) —
 que achou e fechou o bug do `buscar_produtos` ("existe sem estoque" virava "não existe").
@@ -90,7 +92,15 @@ preço; relógio de arrependimento contava da compra e não do recebimento; hist
 (`pre_model_hook` + `trim_messages`); eval rodava n=1 (agora `--rodadas`, default 3, com
 `eval_report.md` versionado); enunciado saiu do versionamento.
 
-Pendência opcional (Pedro): validar o Streamlit ao vivo com conversa de 15+ turnos.
+**Parte 11** (revisão do README pelo Pedro, `brainstorm.txt` — arquivo local, fora do repo):
+cifrão escapado nos renderizadores; dinheiro normalizado no ETL; ruído nome×descrição
+corrigido no ETL a cada build (6 produtos, `data/` intocado); aviso de divergência
+total×soma no `status_pedido`; identidade só por e-mail; tool `simular_pagamento` com as
+constantes conferidas contra `policies.md`; busca por especificação (`_SPECS_PT`); eval de
+20 → 28 casos; testes 8 → 11.
+
+Pendências (Pedro, precisam do LM Studio): regerar `examples/` e `eval_report.md`; validar
+o Streamlit ao vivo com conversa de 15+ turnos.
 
 ## 6. Armadilhas dos dados (descobertas na exploração)
 
@@ -111,6 +121,12 @@ Pendência opcional (Pedro): validar o Streamlit ao vivo com conversa de 15+ tur
 - `orders.csv`: 20 pedidos (IDs 1–20). `tracking_code` / `estimated_delivery` só existem
   para status `delivered`/`shipped`. `notes` só para `cancelled`. **Não há data de entrega
   efetiva.** Todos os pedidos são de out/2025 a mar/2026 → ver `DATA_REFERENCE_DATE` (decisão #4).
+- `products.csv`: 10 produtos (135–144) têm **nome de template** (`Bass 1X`, `Kit 1 Studio`,
+  `Synth 1 Pro`) e em 6 deles a descrição cita **outra marca**. O `build_db.py` corrige a
+  marca a cada build (assert de exatamente 6). Sobra a divergência descrição×specs do 142
+  ("88 teclas" com `keys: 61`) — documentada, não corrigida.
+- `order_items.csv`: **sem preço unitário**. Em 2 dos 20 pedidos (3 e 20) o total não bate
+  com a soma a preço de tabela — desconto na venda que o dataset não registra.
 - `políticas_da_loja.pdf`: **duas versões do WhatsApp** — (67) 3341-4444 (pág. 2, seção 1.2)
   e (67) 3321-4500 (pág. 6, seção 7). E-mail aparece com e sem acento. → `policies.md` usa
   os dados da seção 1.2 como canônicos e anota a divergência.
