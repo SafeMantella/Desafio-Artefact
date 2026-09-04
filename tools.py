@@ -372,30 +372,41 @@ def _max_parcelas(valor: float) -> tuple[int, float]:
 
 
 @tool
-def simular_pagamento(valor: float, entrega_em_campo_grande: bool = False) -> str:
+def simular_pagamento(preco_de_tabela: float, ja_esta_em_promocao: bool = False,
+                      entrega_em_campo_grande: bool = False) -> str:
     """Calcula as formas de pagamento para um valor: preço à vista no PIX, em quantas vezes
     dá para parcelar e quanto fica cada parcela. Opcionalmente, o frete metropolitano.
 
     Use SEMPRE que a pergunta envolver CONTA sobre um valor concreto: "dá pra parcelar em
-    12x?", "quanto fica a parcela?", "em quantas vezes posso dividir?", "quanto sai no PIX?",
-    "pago frete nessa compra?". NUNCA faça essa conta de cabeça.
+    12x?", "quanto fica a parcela?", "quanto sai no PIX?", "pago frete nessa compra?".
+    NUNCA faça essa conta de cabeça.
     Para as regras gerais de pagamento, sem um valor na mesa, use consultar_politica.
 
-    valor: o total em reais (ex.: o preço do instrumento que o cliente escolheu).
+    preco_de_tabela: o preço de TABELA do produto — ou a soma deles, se for mais de um item.
+        NUNCA passe o valor "à vista no PIX" que outra ferramenta já devolveu: é ESTA que
+        aplica o desconto do PIX, e passar o preço já descontado desconta duas vezes.
+        Se o produto tem promoção ativa, passe o preço PROMOCIONAL e marque
+        `ja_esta_em_promocao=True`.
+    ja_esta_em_promocao: True quando o valor acima já é um preço promocional. O desconto do
+        PIX não incide sobre preço promocional (política 6.2), e a ferramenta respeita isso.
     entrega_em_campo_grande: True só se o cliente disse que é em Campo Grande ou região
         metropolitana. Se ele não disse, deixe False e pergunte a cidade.
     """
-    log.debug("simular_pagamento(valor=%s, cg=%s)", valor, entrega_em_campo_grande)
-    if not valor or valor <= 0:
+    log.debug("simular_pagamento(preco=%s, promo=%s, cg=%s)",
+              preco_de_tabela, ja_esta_em_promocao, entrega_em_campo_grande)
+    if not preco_de_tabela or preco_de_tabela <= 0:
         return "Preciso do valor da compra para calcular. Confirme o produto com o cliente."
 
-    n, parcela = _max_parcelas(valor)
-    linhas = [
-        f"Simulação para {_brl(valor)}:",
-        f"- À vista no PIX: {_brl(valor * (1 - _PIX_DESCONTO))} "
-        f"({int(_PIX_DESCONTO * 100)}% de desconto). Esse desconto NÃO se aplica sobre preço "
-        "que já está promocional.",
-    ]
+    n, parcela = _max_parcelas(preco_de_tabela)
+    pct = int(_PIX_DESCONTO * 100)
+    linhas = [f"Simulação para {_brl(preco_de_tabela)}:"]
+    if ja_esta_em_promocao:
+        linhas.append(f"- À vista no PIX: {_brl(preco_de_tabela)} — o mesmo valor. Os {pct}% do "
+                      "PIX NÃO incidem sobre preço promocional (política 6.2); o desconto da "
+                      "promoção já está aplicado aqui.")
+    else:
+        linhas.append(f"- À vista no PIX: {_brl(preco_de_tabela * (1 - _PIX_DESCONTO))} "
+                      f"({pct}% de desconto sobre a tabela).")
     if n == 1:
         linhas.append("- Cartão de crédito: só à vista. Nesse valor, mesmo em 2x a parcela "
                       "ficaria abaixo do mínimo permitido pela política.")
@@ -406,7 +417,7 @@ def simular_pagamento(valor: float, entrega_em_campo_grande: bool = False) -> st
     gratis_acima, taxa = _FRETE_CG
     if entrega_em_campo_grande:
         linhas.append(f"- Frete em Campo Grande e região: grátis (acima de {_brl(gratis_acima)})"
-                      if valor > gratis_acima else
+                      if preco_de_tabela > gratis_acima else
                       f"- Frete em Campo Grande e região: {_brl(taxa)} "
                       f"(seria grátis acima de {_brl(gratis_acima)})")
     else:

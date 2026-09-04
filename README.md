@@ -38,7 +38,7 @@ pagamento, frete, garantia). Perguntas fora do escopo da loja são recusadas edu
 - *"Vocês vendem cordas de violão?"* → explica que a loja não trabalha com acessórios
 - *"Me passa uma receita de bolo?"* → recusa educadamente e volta ao contexto da loja
 
-Cinco conversas completas estão em [`examples/`](examples/), e a avaliação automática de 28
+Cinco conversas completas estão em [`examples/`](examples/), e a avaliação automática de 29
 cenários (3 rodadas cada) em [`eval_report.md`](eval_report.md).
 
 ---
@@ -48,14 +48,14 @@ cenários (3 rodadas cada) em [`eval_report.md`](eval_report.md).
 ### Pré-requisitos
 
 - **Python 3.11+**
-- **[LM Studio](https://lmstudio.ai/)** com um modelo que suporte *tool use* / function calling.
-  A avaliação versionada em [`eval_report.md`](eval_report.md) é com **Qwen3.8-27B**
-  (`qwen/qwen3.8-27b`), 3 rodadas por caso. O projeto foi construído com
-  **Qwen3.5-9B** (`qwen/qwen3.5-9b`), que também roda — mais rápido e menos confiável no
-  *tool calling*; a família Qwen2.5-Instruct (7B+) e Llama-3.1-8B-Instruct servem como
-  alternativas mais leves. Modelos maiores respondem melhor em português e chamam as
-  ferramentas de forma mais confiável, ao custo de latência (ver decisão 2).
-  Sugestões no LM Studio: contexto de 16k+ e GPU offload no máximo.
+- **[LM Studio](https://lmstudio.ai/)** com um modelo que atenda a três requisitos:
+  suporte a *tool use* / function calling, português do Brasil decente e janela de
+  contexto de 16k ou mais. O projeto não depende de nenhum modelo específico — o `.env`
+  troca o modelo e o endpoint sem tocar em código, e foi exercitado com vários portes
+  diferentes ao longo do desenvolvimento. Qual foi usado na avaliação versionada está no
+  cabeçalho do [`eval_report.md`](eval_report.md), que o próprio `test_live.py` escreve.
+  Modelos maiores acertam mais o *tool calling* e escrevem melhor em português, ao custo
+  de latência (ver decisão 2). No LM Studio: GPU offload no máximo.
 
 ### Passos
 
@@ -88,14 +88,14 @@ Variáveis de ambiente (`.env`):
 |---|---|---|
 | `OPENAI_BASE_URL` | `http://localhost:1234/v1` | endpoint do LM Studio (API compatível com OpenAI) |
 | `OPENAI_API_KEY` | `lm-studio` | qualquer valor não vazio; o LM Studio ignora |
-| `MODEL` | `qwen/qwen3.5-9b` | id do modelo carregado no LM Studio |
+| `MODEL` | *(defina o seu)* | id exato do modelo carregado no LM Studio, como aparece na aba Developer |
 | `DATA_REFERENCE_DATE` | `2026-03-25` | **"hoje" do agente.** O dataset é um snapshot; sem isso todo pedido fica fora de prazo — ver [decisão 5](#5-conceito-de-hoje--data_reference_date-configurável) |
 
 ### Testes
 
 ```bash
 python test_agent.py             # 11 checks determinísticos, sem LLM — segundos
-python test_live.py              # 28 casos × 3 rodadas contra o LM Studio — horas
+python test_live.py              # 29 casos × 3 rodadas contra o LM Studio — horas
 python test_live.py --rodadas 1  # 1 rodada só, para iterar
 python test_live.py identidade   # só os casos cujo nome contém "identidade"
 ```
@@ -169,7 +169,7 @@ instrumento por chamada, porque o seu trabalho é desambiguar um nome.
 | **LangGraph** — `create_react_agent`, `SqliteSaver` | laço do agente ReAct + persistência do histórico | laço de raciocínio, *binding* de ferramentas e checkpoint prontos e testados (§1, §7) |
 | **LangChain** — `langchain-core`, `langchain-openai` | decorator `@tool`, tipos de mensagem, `ChatOpenAI` | `ChatOpenAI` é o adaptador de modelo que o `create_react_agent` espera; com `base_url` aponta direto pro LM Studio (§1) |
 | **LM Studio** | serve o modelo local via API compatível com OpenAI | custo zero, offline, e a PII do cliente não sai da máquina — LGPD (§2) |
-| **Qwen3.8-27B** (trocável; 3.5-9B como alternativa leve) | o modelo de linguagem | melhor *tool calling* da faixa aberta local + PT-BR bom; o `.env` troca o modelo sem tocar em código (§2) |
+| **Modelo local aberto** (qualquer um com *tool use*; trocável pelo `.env`) | o modelo de linguagem | o código é agnóstico — `base_url` + `MODEL` no `.env`; o que muda entre modelos é confiabilidade do *tool calling* e latência, não o código (§2) |
 | **SQLite** (`sqlite3`, stdlib) | catálogo/pedidos consultáveis + histórico de conversa | modelagem explícita em *views*, *joins* limpos, um arquivo só, zero dependência (§4, §7) |
 | **pandas** | ETL dos CSVs (`read_csv` → `to_sql`) | 2 linhas por CSV e inferência de tipo nas colunas mistas int/decimal; usado só no `build_db.py` (§4) |
 | **pymupdf4llm** (+ `pymupdf`) | PDF de políticas → markdown | conversão reproduzível e versionada; usado só no `convert_policies.py`, em *build-time* (§3) |
@@ -197,7 +197,7 @@ raciocinar e chamar ferramentas até ter a resposta. O modelo fala com o LM Stud
 - **Custo zero e offline.** Nenhuma chave de API, nenhuma cota.
 - **Privacidade.** O manual da loja cita a LGPD e o atendimento lida com nome, e-mail e pedidos de clientes. Rodar o modelo localmente evita mandar esses dados para uma API de terceiros. Um argumento real de conformidade, não só de custo.
 - **Trade-off assumido:** *tool calling* de modelos abertos pequenos é menos confiável que o de modelos frontier. Mitigações: só 5 ferramentas, descrições ricas, `temperature=0`, e um system prompt curto. O código é agnóstico ao modelo (`base_url` + `MODEL` no `.env`), então trocar por uma API é mudar duas variáveis.
-- **Recomendação:** Qwen3.8-27B (`qwen/qwen3.8-27b`) — é o modelo do relatório versionado ([`eval_report.md`](eval_report.md)), que traz a taxa e a latência de cada caso da última execução completa. O Qwen3.5-9B, com que o projeto foi construído, é a alternativa leve: bem mais rápido, e foi com ele que apareceram os erros de *tool calling* que viraram regra de prompt. Modelos frontier via API resolveriam latência e confiabilidade de uma vez, ao custo de mandar PII para fora.
+- **Como escolher:** o eixo é confiabilidade de *tool calling* contra latência. Modelos menores respondem em segundos e erram mais a chamada de ferramenta — foram os erros deles, vistos em conversa real, que viraram regra explícita no prompt. Modelos maiores acertam mais e demoram proporcionalmente. O [`eval_report.md`](eval_report.md) registra qual modelo gerou aquele resultado, com taxa e latência por caso, para a comparação ser sobre número e não sobre impressão. Modelos frontier via API resolveriam latência e confiabilidade de uma vez, ao custo de mandar PII para fora.
 - **A tensão que esta escolha assume:** o problema de negócio do enunciado é *volume* — "a equipe está sobrecarregada com perguntas recorrentes". Os números são medidos, não estimados ([`eval_report.md`](eval_report.md), 60 execuções): **mediana de 56 s por caso**, e 415 s no pior (uma conversa de 7 turnos). Sem *streaming* nem fila, isso **demonstra** que a lógica do agente funciona, mas não ataca o volume: um atendente esperando um minuto por resposta não está menos sobrecarregado. Este protótipo otimiza para custo, privacidade e reprodutibilidade offline; um deployment real contra o volume seria outra decisão — modelo servido com *batching* (ou API), resposta em *streaming*, e uma fila de atendimento. O agente aqui é a peça que se prova primeiro; a camada de serving é o passo seguinte, não um detalhe.
 
 ### 3. Políticas — conversão com `pymupdf4llm` + ferramenta de seção (sem embeddings)
@@ -362,7 +362,7 @@ Regra de política: vive só no texto, não no código nem no prompt.
 Dois níveis, ambos com `assert` e um `main()` próprio, sem pytest:
 
 - **`test_agent.py`** (11 funções, sem LLM): a lógica determinística — views do ETL e a correção de marca, roteamento das 10 seções de política, as tools de dados, a verificação de identidade contra os 20 pedidos, a aritmética de `simular_pagamento` (e a conferência das constantes contra o manual) e a poda de histórico. Inclui `test_policies_sem_perda`, que garante que a curadoria de `policies.md` mexeu em forma e não em conteúdo: todo número, valor e e-mail do `policies_raw.md` sobrevive no curado. Rápido, roda em qualquer lugar.
-- **`test_live.py`** (28 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta — cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é o que trava regressão de comportamento quando o prompt muda.
+- **`test_live.py`** (29 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta — cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é o que trava regressão de comportamento quando o prompt muda.
 
 Evals: Cada execução escreve **[`eval_report.md`](eval_report.md)** com a taxa e a latência (mediana e pior caso) de cada caso. O arquivo é versionado de propósito: quem for avaliar o projeto vê o número sem precisar instalar o LM Studio e baixar o modelo.
 
@@ -407,7 +407,7 @@ cotação. Uma tool que só reimprimisse a §5 seria uma segunda porta para a me
   grafo: depois das conversas de teste, o `emporio.db` estava com 95 MB e 1.905 checkpoints
   para 65 produtos e 20 pedidos. Num protótipo local é irrelevante; num deploy pediria
   expiração ou um store separado do catálogo.
-- **Latência vs. o problema de volume.** Mediana de 56 s por caso e 415 s no pior, medidos em 60 execuções com o 27B local, sem streaming. O 9B é bem mais rápido, com tool calling menos confiável.
+- **Latência vs. o problema de volume.** Dezenas de segundos por caso, sem streaming — os números medidos da última execução estão no [`eval_report.md`](eval_report.md). Varia muito com o porte do modelo: os menores respondem em segundos e erram mais o *tool calling*.
 - **Sem guard determinístico de escopo.** A recusa de assuntos fora da loja é só via prompt.
 - **Verificação de identidade não é autenticação.** Exige o e-mail exato do cadastro (ver decisão 6), mas não há login, código de confirmação nem rate limit — e `order_id` é sequencial. Suficiente para protótipo, não para produção.
 - **Busca de produto é lexical** (casa palavras no nome e nas specs, todas em E lógico).

@@ -250,8 +250,8 @@ def test_simular_pagamento():
     for v in _FRETE_CG:
         assert _brl(v) in politica, f"valor de frete {_brl(v)} sumiu do manual"
 
-    sim = lambda v, cg=False: simular_pagamento.invoke(
-        {"valor": v, "entrega_em_campo_grande": cg})
+    sim = lambda v, cg=False, promo=False: simular_pagamento.invoke(
+        {"preco_de_tabela": v, "entrega_em_campo_grande": cg, "ja_esta_em_promocao": promo})
 
     # 2199/12 = 183,25 >= 100 -> cabe em 12x
     assert "12x sem juros, de R$ 183,25" in sim(2199)
@@ -263,6 +263,11 @@ def test_simular_pagamento():
     # frete metropolitano: a única metade calculável
     assert "R$ 35,00" in sim(480, cg=True) and "grátis" in sim(520, cg=True)
     assert "NÃO tenho como calcular" in sim(480), "fora de CG não pode virar número"
+
+    # PIX não acumula com promoção (§6.2), como na view v_produto. O produto 127 sai por
+    # R$ 323,10 com a promo de 10%: no PIX continua 323,10, não 306,94.
+    promo = sim(323.10, promo=True)
+    assert "R$ 323,10" in promo and "R$ 306,94" not in promo, promo
 
 
 def test_poda_historico():

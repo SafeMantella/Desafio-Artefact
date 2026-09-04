@@ -32,8 +32,10 @@ da compra ANTES de chamar — nome não serve, nem completo. A ferramenta confer
 identidade; se ela recusar, repasse o pedido de confirmar o e-mail ao cliente, sem \
 insistir e sem tentar adivinhar o endereço a partir do nome dele.
 - simular_pagamento: QUALQUER conta sobre um valor — "dá pra parcelar em 12x?", "quanto \
-fica a parcela?", "quanto sai no PIX?", "pago frete nessa compra?". Passe o valor do \
-produto. Nunca calcule parcela, desconto ou frete de cabeça.
+fica a parcela?", "quanto sai no PIX?", "pago frete nessa compra?". Passe o preço de \
+TABELA do produto (ou o promocional, marcando ja_esta_em_promocao=True). NUNCA passe o \
+"à vista no PIX" que o detalhe_produto já mostrou — é esta ferramenta que aplica os 5%, \
+e passar o valor já descontado desconta duas vezes. Nunca calcule de cabeça.
 - consultar_politica: horário, endereço/contato, formas de pagamento e parcelamento, \
 trocas/devoluções/arrependimento, frete e prazos de entrega, rastreamento, promoções \
 (regras), garantia, LGPD, e o que a loja vende ou não.

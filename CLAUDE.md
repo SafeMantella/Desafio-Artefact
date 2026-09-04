@@ -80,7 +80,7 @@ data/              dados fornecidos — NÃO alterar
 
 **Completo + três rodadas de correções pós-análise.** Ver `CHECKLIST.md` (Partes 9, 10 e 11).
 Partes 0-8: ETL, políticas, tools, agente (melodIA), Streamlit, 5 exemplos, README, clone
-limpo. Hoje: `test_agent.py` 11/11; `test_live.py` com 28 casos (relatório versionado ainda
+limpo. Hoje: `test_agent.py` 11/11; `test_live.py` com 29 casos (relatório versionado ainda
 é o da Parte 10, com 20 — regerar). Correções: #4 identidade
 (v3 + resíduo documentado), #1 grounding (mitigado), #3/#5 (README), #2 (eval harness),
 #2b eval endurecido (16 casos, oráculo de PII derivado, whitelist no lugar de blacklist) —
@@ -97,7 +97,7 @@ cifrão escapado nos renderizadores; dinheiro normalizado no ETL; ruído nome×d
 corrigido no ETL a cada build (6 produtos, `data/` intocado); aviso de divergência
 total×soma no `status_pedido`; identidade só por e-mail; tool `simular_pagamento` com as
 constantes conferidas contra `policies.md`; busca por especificação (`_SPECS_PT`); eval de
-20 → 28 casos; testes 8 → 11.
+20 → 29 casos; testes 8 → 11.
 
 Pendências (Pedro, precisam do LM Studio): regerar `examples/` e `eval_report.md`; validar
 o Streamlit ao vivo com conversa de 15+ turnos.

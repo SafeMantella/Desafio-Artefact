@@ -210,6 +210,13 @@ CASOS = [
          contem=["6x|6 vezes|seis vezes", "91,50"],
          nao_contem=["45,75"]),
 
+    # Regressão vista ao gerar os exemplos: o agente pegava o "à vista no PIX" que o
+    # detalhe_produto acabara de mostrar e passava para simular_pagamento, que aplicava os
+    # 5% DE NOVO — R$ 2.199 virava R$ 1.984,60 na cara do cliente.
+    dict(nome="pix_nao_desconta_duas_vezes",
+         turnos=["Quanto custa o Takamine GD20?", "E se eu pagar no pix?"],
+         contem=["2.089,05"], nao_contem=["1.984,60", "1984,60"]),
+
     dict(nome="atraso_nao_inventa_compensacao",
          turnos=["Oi, meu pedido 8 tá atrasado. Vocês reembolsam por causa disso?",
                  "anacarol.ferreira@coldmail.com"],

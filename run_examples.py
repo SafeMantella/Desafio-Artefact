@@ -23,12 +23,14 @@ EXEMPLOS = [
         "Qual o endereço da loja e que horas vocês abrem no sábado?",
         "Vocês parcelam no cartão?",
     ]),
-    # O cenário não trivial: o prazo de arrependimento (§4.1) conta do RECEBIMENTO, e o
-    # sistema não tem essa data. O agente precisa conferir a identidade, ler a política,
-    # perceber qual relógio usar e PERGUNTAR ao cliente quando ele recebeu.
+    # O cenário não trivial, em quatro atos: o prazo de arrependimento (§4.1) conta do
+    # RECEBIMENTO, e o sistema não tem essa data. O agente precisa recusar a identificação
+    # por nome (só e-mail exato libera PII), conferir a identidade, ler a política, perceber
+    # qual relógio usar e PERGUNTAR ao cliente quando ele recebeu.
     ("04_devolucao_pedido", "NÃO TRIVIAL: devolução aplicando política + dados do pedido", [
         "Comprei um ukulele aí e me arrependi. É o pedido 7, consigo devolver?",
-        "Letícia Gonçalves Rocha",
+        "Letícia Gonçalves Rocha",          # nome não libera: a tool exige o e-mail
+        "leticia.rocha@jmail.com",
         "Recebi ele ontem.",
     ]),
     ("05_fora_de_escopo", "Fora do escopo: acessório e pergunta aleatória", [

@@ -167,7 +167,7 @@ dado real, veredito dele, implementação por fase com um commit por fase.
 - [x] item 9 — identidade só por pedido + e-mail exato (heurística de nome deletada)
 - [x] item 13 — `simular_pagamento`, com as constantes conferidas contra `policies.md`
 - [x] item 14 c — prompt oferece as specs depois de apresentar um instrumento
-- [x] item 12b — eval de 20 → 28 casos (5 de política, 2 de parcelamento, 1 de identidade)
+- [x] item 12b — eval de 20 → 29 casos (5 de política, 3 de pagamento, 1 de identidade)
 - [x] itens 2, 3, 6, 8, 11 — README: armadilhas dos dados, uma busca = uma chamada,
       conta de preço, por que não `date.today()`, limitação de hardware / usuário único
 - [x] item 4 — decidido NÃO: `data/` são fixtures, sem elas o repo não é reproduzível
