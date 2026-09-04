@@ -1,14 +1,12 @@
 # Informações gerais da loja (políticas)
 
 
-_Modelo: qwen/qwen3.8-27b. Gerado por `run_examples.py`._
+_Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_examples.py`._
 
 
 **Cliente:** Qual o endereço da loja e que horas vocês abrem no sábado?
 
-> 🔧 chama `consultar_politica(topico='endereço da loja')`
-
-> 🔧 chama `consultar_politica(topico='horário de funcionamento no sábado')`
+> 🔧 chama `consultar_politica(topico='horário e endereço')`
 
 > 🔧 `consultar_politica` →
 >
@@ -35,33 +33,23 @@ _Modelo: qwen/qwen3.8-27b. Gerado por `run_examples.py`._
 > | CNPJ | 12.345.678/0001-90 |
 > | Endereço […]
 
-> 🔧 `consultar_politica` →
->
-> ## 2. Horário de Funcionamento
-> 
-> Atendimento presencial na loja. O atendimento via WhatsApp segue o mesmo horário, com respostas
-> automáticas fora do expediente.
-> 
-> | Dia | Horário |
-> |---|---|
-> | Segunda a Sexta-feira | 09:00 às 18:00 |
-> | Sábado | 09:00 às 13:00 |
-> | Domingo e Feriados | Fechado |
-> 
-> Em datas especiais (Black Friday, Aniversário da Loja, Natal) o horário pode ser estendido.
-> Alterações são comunicadas com antecedência nas redes sociais e no WhatsApp.
+**Assistente:** Oi! Tudo bem? Sou a **melodIA**, da Empório da Música. 😊
 
-**Assistente:** Oi! Tudo bem? 😊
+Sobre o endereço e horário do sábado:
 
-**Endereço:** Rua 14 de Maio, 3200 — Centro, Campo Grande/MS (CEP 79202-333).
+📍 **Endereço:**  
+Rua 14 de Maio, 3200 — Centro, Campo Grande - MS, 79202-333
 
-**Sábado:** abrimos das **09h às 13h**.
+⏰ **Horário de funcionamento no sábado:**  
+Das 09:00 às 13:00
 
-Se precisar, nosso WhatsApp é (67) 3341-4444. Posso te ajudar com mais alguma coisa?
+A gente atende presencialmente nesse horário, e o WhatsApp também segue a mesma rotina (com respostas automáticas fora do expediente).
+
+Se precisar de mais alguma coisa — tipo catálogo, preços ou status de pedido — é só chamar! Sua música começa aqui. 🎸
 
 **Cliente:** Vocês parcelam no cartão?
 
-> 🔧 chama `consultar_politica(topico='formas de pagamento e parcelamento no cartão')`
+> 🔧 chama `consultar_politica(topico='formas de pagamento')`
 
 > 🔧 `consultar_politica` →
 >
@@ -82,10 +70,13 @@ Se precisar, nosso WhatsApp é (67) 3341-4444. Posso te ajudar com mais alguma c
 > - 7x a 12x: sem juros, parcela mínima de R\$ 100,00.
 > - Combinação de formas de pagamento (ex.: PIX + cartão): permitida para compras acima de R\$ 2.000,00.
 
-**Assistente:** Sim! Parcelamos em **até 12x sem juros** no cartão de crédito. Só tem uma regra de parcela mínima:
+**Assistente:** Oi! Sim, a gente **parcela no cartão de crédito**! 🎸
 
-- **Até 3x:** sem valor mínimo (exceto compras abaixo de R\$ 50)
-- **4x a 6x:** parcela mínima de R\$ 80
-- **7x a 12x:** parcela mínima de R\$ 100
+**Condições:**
+- Até **12x sem juros**, desde que a parcela seja de pelo menos R\$ 100,00
+- Até **3x sem juros** (sem valor mínimo)
+- De **4x a 6x sem juros**, com parcela mínima de R\$ 80,00
 
-E se pagar no PIX, tem 5% de desconto à vista. Quer que eu te ajude a ver alguma opção de instrumento? 🎸
+E tem mais: se você pagar no **PIX**, ganha **5% de desconto** sobre o preço de tabela!
+
+Quer simular como fica o parcelamento de algum instrumento específico? É só me dizer qual modelo te interessou! Sua música começa aqui. 😊

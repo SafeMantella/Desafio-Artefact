@@ -382,7 +382,10 @@ def simular_pagamento(preco_de_tabela: float, ja_esta_em_promocao: bool = False,
     NUNCA faça essa conta de cabeça.
     Para as regras gerais de pagamento, sem um valor na mesa, use consultar_politica.
 
-    preco_de_tabela: o preço de TABELA do produto — ou a soma deles, se for mais de um item.
+    preco_de_tabela: o valor a pagar, ANTES de qualquer desconto de pagamento. Pode ser o
+        preço de tabela de um produto, a soma de vários, ou simplesmente o valor que o
+        cliente informou ("uma compra de R$ 549") — nesse caso use o número que ele deu,
+        sem precisar saber qual é o produto.
         NUNCA passe o valor "à vista no PIX" que outra ferramenta já devolveu: é ESTA que
         aplica o desconto do PIX, e passar o preço já descontado desconta duas vezes.
         Se o produto tem promoção ativa, passe o preço PROMOCIONAL e marque

@@ -1,12 +1,24 @@
 # Fora do escopo: acessório e pergunta aleatória
 
 
-_Modelo: qwen/qwen3.8-27b. Gerado por `run_examples.py`._
+_Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_examples.py`._
 
 
 **Cliente:** Vocês vendem cordas de violão?
 
-> 🔧 chama `consultar_politica(topico='A loja vende cordas de violão? Vocês vendem acessórios?')`
+> 🔧 chama `consultar_politica(topico='escopo')`
+
+> 🔧 `consultar_politica` →
+>
+> Não identifiquei o tópico. Assuntos cobertos pelo manual: 1=1. Sobre a Empório da Música, 2=2. Horário de Funcionamento, 3=3. Formas de Pagamento, 4=4. Política de Trocas e Devoluções, 5=5. Política de Frete e Entregas, 6=6. Promoções e Descontos, 7=7. Atendimento via WhatsApp, 8=8. Garantia, 9=9. Privacidade e Proteção de Dados, 10=10. Disposições Finais. Reformule com uma dessas palavras.
+
+> 🔧 chama `consultar_politica(topico='escopo')`
+
+> 🔧 `consultar_politica` →
+>
+> Não identifiquei o tópico. Assuntos cobertos pelo manual: 1=1. Sobre a Empório da Música, 2=2. Horário de Funcionamento, 3=3. Formas de Pagamento, 4=4. Política de Trocas e Devoluções, 5=5. Política de Frete e Entregas, 6=6. Promoções e Descontos, 7=7. Atendimento via WhatsApp, 8=8. Garantia, 9=9. Privacidade e Proteção de Dados, 10=10. Disposições Finais. Reformule com uma dessas palavras.
+
+> 🔧 chama `consultar_politica(topico='o que a loja vende')`
 
 > 🔧 `consultar_politica` →
 >
@@ -33,14 +45,18 @@ _Modelo: qwen/qwen3.8-27b. Gerado por `run_examples.py`._
 > | CNPJ | 12.345.678/0001-90 |
 > | Endereço […]
 
-**Assistente:** Ai, essa eu te respondo com carinho: a Empório da Música trabalha **exclusivamente com instrumentos musicais** — violões, guitarras, baixos, baterias, teclados, sopros e ukuleles. Não comercializamos acessórios como cordas, palhetas, cabos, cases ou amplificadores. 😊
+**Assistente:** Oi! Sou a **melodIA**, da Empório da Música. 😊
 
-Para cordas de violão, o ideal é procurar uma loja especializada em acessórios musicais.
+Sobre cordas de violão: a gente trabalha **exclusivamente com instrumentos musicais** — violões, guitarras, baixos, baterias, teclados e os amigos de sopro.
 
-Mas se você estiver em busca do violão em si, posso te ajudar a encontrar o modelo certo! Posso te mostrar as opções que temos? 🎸
+Aqui **não vendemos acessórios** como cordas, palhetas, cabos ou cases. Mas não se preocupe! Recomendo procurar uma loja especializada em acessórios musicais — geralmente eles têm um bom estoque e preços competitivos.
+
+Se precisar de ajuda com algum **instrumento**, é só chamar! Sua música começa aqui. 🎸🎵
 
 **Cliente:** Beleza. E me passa uma receita de bolo de chocolate?
 
-**Assistente:** Essa eu fico te devendo 😄 — sou a melodIA, da Empório da Música, e ajudo com instrumentos, pedidos e as regras da loja.
+**Assistente:** Oi! Essa eu fico te devendo 😄 — sou a **melodIA**, da Empório da Música, e ajudo com instrumentos, pedidos e as regras da loja.
 
-Se quiser, posso te mostrar os violões que temos em estoque ou te ajudar com qualquer outro instrumento. Posso te ajudar com algo assim? 🎸
+Receitas de bolo não é o meu prato forte! Mas se quiser saber sobre **horário, endereço, formas de pagamento** ou qualquer coisa relacionada a instrumentos musicais, é só falar.
+
+Sua música começa aqui! 🎸🎵

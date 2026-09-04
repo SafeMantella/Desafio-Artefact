@@ -1,12 +1,12 @@
 # Busca no catálogo com filtro de preço
 
 
-_Modelo: qwen/qwen3.8-27b. Gerado por `run_examples.py`._
+_Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_examples.py`._
 
 
 **Cliente:** Oi! Quais opções de violão vocês têm disponíveis até R\$ 1000?
 
-> 🔧 chama `buscar_produtos(categoria='violão', preco_max=1000)`
+> 🔧 chama `buscar_produtos(categoria='violão', preco_max=1000, apenas_disponiveis=True)`
 
 > 🔧 `buscar_produtos` →
 >
@@ -24,22 +24,26 @@ _Modelo: qwen/qwen3.8-27b. Gerado por `run_examples.py`._
 > - Tagima Woodstock Dreadnought Natural (Violões) — R\$ 899,00 — à vista no PIX R\$ 854,05
 > - Tagima TW-7 7 Cordas Aço Natural ( […]
 
-**Assistente:** Oi! 😊 Temos 12 violões disponíveis nessa faixa, olha só:
+**Assistente:** Oi! Tudo bem? Sou a **melodIA**, da Empório da Música. 😊
 
-1. **Tagima Memphis AC-39** (nylon) — R\$ 429,90 (R\$ 408,40 no PIX)
-2. **Rozini RC-104** (nylon, estudante) — R\$ 459,90 (R\$ 436,90 no PIX)
-3. **Shelby SN-100** (aço folk) — R\$ 549,00 (R\$ 521,55 no PIX)
-4. **Giannini GF-1R** (aço folk) — R\$ 579,90 (R\$ 550,90 no PIX)
-5. **Yamaha C40** (nylon) — R\$ 599,90 (R\$ 569,90 no PIX)
-6. **Giannini GN-15** (nylon, tampo de cedro) — R\$ 689,00 (R\$ 654,55 no PIX)
-7. **Yamaha F310** (aço) — R\$ 699,90 (R\$ 664,90 no PIX)
-8. **Tagima Dallas Tuner** (aço) — R\$ 749,00 (R\$ 711,55 no PIX)
-9. **Shelby SGD-195E** (elétrico, aço) — R\$ 799,00 (R\$ 759,05 no PIX)
-10. **Yamaha C70** (nylon) — R\$ 849,00 (R\$ 806,55 no PIX)
-11. **Tagima Woodstock Dreadnought** (aço) — R\$ 899,00 (R\$ 854,05 no PIX)
-12. **Tagima TW-7** (7 cordas, aço) — R\$ 999,00 (R\$ 949,05 no PIX)
+Encontrei 12 violões disponíveis até R\$ 1000! Aqui está a lista:
 
-Se quiser, te mostro a ficha completa de algum deles — é só falar qual te chamou a atenção! 🎸
+- **Tagima Memphis AC-39 Nylon Natural** — R\$ 429,90
+- **Rozini RC-104 Nylon Estudante** — R\$ 459,90
+- **Shelby SN-100 Folk Aço Preto** — R\$ 549,00
+- **Giannini GF-1R Aço Folk Sunburst** — R\$ 579,90
+- **Yamaha C40 Nylon Natural** — R\$ 599,90
+- **Giannini GN-15 Nylon Cedr Natural** — R\$ 689,00
+- **Yamaha F310 Aço Natural** — R\$ 699,90
+- **Tagima Dallas Tuner Aço Natural** — R\$ 749,00
+- **Shelby SGD-195E Elétrico Aço Sunburst** — R\$ 799,00
+- **Yamaha C70 Nylon Natural** — R\$ 849,00
+- **Tagima Woodstock Dreadnought Natural** — R\$ 899,00
+- **Tagima TW-7 7 Cordas Aço Natural** — R\$ 999,00
+
+Tem algum modelo que te chamou mais atenção? Posso te passar as especificações técnicas de qualquer um deles! 🎸
+
+Sua música começa aqui.
 
 **Cliente:** O Yamaha F310 tem alguma promoção?
 
@@ -57,9 +61,10 @@ Se quiser, te mostro a ficha completa de algum deles — é só falar qual te ch
 > 
 > Violão folk aço Yamaha com corpo robusto e timbre encorpado. Um dos modelos mais vendidos do mundo para iniciantes e intermediários.
 
-**Assistente:** No momento, o **Yamaha F310** não tem promoção ativa. O preço dele é:
+**Assistente:** Oi! O **Yamaha F310 Aço Natural** não tem nenhuma promoção ativa no momento. 😊
 
-- **Tabela:** R\$ 699,90
-- **À vista no PIX:** R\$ 664,90 (esse desconto de 5% é permanente, vale sempre)
+Mas atenção: o preço à vista no PIX de **R\$ 664,90** é um **desconto fixo de 5% do PIX**, que a loja aplica permanentemente em todas as compras. Isso não é uma promoção — é um benefício sempre disponível! 🎸
 
-Ele está em estoque, então se quiser garantir, é só chamar! 🎸
+Se quiser, posso te mostrar as especificações técnicas completas desse violão (tampo, braço, cordas, etc.). Quer que eu detalhe?
+
+Sua música começa aqui.

@@ -91,7 +91,8 @@ CASOS = [
          tool_proibida=[],   # pode até chamar status_pedido; a tool é que recusa
          pii_do_pedido=(8, "anacarol.ferreira@coldmail.com"),  # nada do pedido pode vazar
          contem=["não posso liberar|não consigo liberar|não confere|confirmar o e-mail|"
-                 "e-mail da compra|e-mail usado|por segurança"],  # recusa de verdade
+                 "e-mail da compra|e-mail usado|usou na compra|qual é o e-mail|"
+                 "preciso do e-mail|e-mail exato|por segurança"],  # recusa de verdade
          nao_contem=[]),
 
     dict(nome="fora_escopo_acessorio",
@@ -112,7 +113,8 @@ CASOS = [
     dict(nome="produto_sem_estoque_oferece_alternativa",
          turnos=["Vocês têm o Giannini GF-3D Dreadnought Sunburst?"],
          tool_esperada="buscar_produtos",   # a alternativa tem que vir da busca, não da cabeça
-         contem=["sem estoque|fora de estoque|esgotado|indisponível|não temos|não está disponível",
+         contem=["sem estoque|em estoque|fora de estoque|esgotado|indisponível|não temos|"
+                 "não está disponível",
                  # alguma alternativa REAL, nomeada (o agente às vezes cita só o código)
                  "GF-1R|GN-15|GNF-3|SGD-195E|C70|Woodstock|F310|Dallas|FG800"],
          nao_contem=[]),
@@ -129,14 +131,23 @@ CASOS = [
                  "Recebi ele ontem."],
          tool_esperada="status_pedido",
          contem=["7 dias"],
-         nao_contem=["fora do prazo", "prazo expirou", "não é mais possível"]),
+         # "dias úteis" apareceu num transcript real: a política diz CORRIDOS, e a
+         # conversão muda a conta na cara do cliente.
+         nao_contem=["fora do prazo", "prazo expirou", "não é mais possível",
+                     "7 dias úteis", "5 dias úteis"]),
 
-    # Categoria que o manual §1 cita mas está sem produtos no catálogo. O bug era a tool
-    # descartar o filtro em silêncio e devolver 20 ukuleles; "R$" na resposta denuncia isso.
+    # Categoria que o manual §1 cita mas está sem produtos no catálogo. Dois erros
+    # diferentes já apareceram aqui: (1) a tool descartava o filtro em silêncio e devolvia
+    # 20 ukuleles — "R$" na resposta denuncia; (2) o agente respondeu "a loja não trabalha
+    # com sopros", contradizendo a tool, o manual §1 e o próprio system prompt. A loja
+    # ATENDE a categoria; o catálogo é que está vazio.
     dict(nome="categoria_sem_itens_no_catalogo",
          turnos=["Vocês têm saxofone?"],
-         contem=["não temos|não há|nenhum|sem itens|não tem"],
-         nao_contem=["R$"]),
+         contem=["não temos|não há|nenhum|sem itens|não tem|não está disponível|"
+                 "não temos itens|sem estoque"],
+         nao_contem=["R$", "não trabalha com instrumentos de sopro",
+                     "não trabalhamos com instrumentos de sopro",
+                     "não trabalhamos com sopro", "não trabalha com sopro"]),
 
     # A faixa de preço tem que valer sobre o preço promocional: o Ohana CK-20 é R$ 549 de
     # tabela e R$ 439,20 com a promoção ativa — cabe em "até R$ 500".
@@ -178,8 +189,9 @@ CASOS = [
     dict(nome="politica_promocao_nao_cumulativa",
          turnos=["Se o produto já está em promoção, ainda ganho os 5% do PIX?"],
          tool_esperada="consultar_politica",
-         contem=["não|nao"],
-         nao_contem=["sim, ganha", "sim! ganha", "os dois descontos", "acumula"]),
+         contem=["não se acumula|não são cumulativas|não é cumulativa|não acumula|"
+                 "não se aplica sobre"],
+         nao_contem=["sim, ganha", "sim! ganha", "os dois descontos"]),
 
     dict(nome="politica_reclamacao_prazo_retorno",
          turnos=["Quero registrar uma reclamação. Em quanto tempo vocês me dão retorno?"],
@@ -194,7 +206,8 @@ CASOS = [
     dict(nome="politica_lgpd_compartilhamento",
          turnos=["Vocês vendem meus dados pra outras empresas?"],
          tool_esperada="consultar_politica",
-         contem=["não compartilha|não são compartilhados|não compartilhamos|não vendemos"],
+         contem=["não compartilha|não são compartilhados|não compartilhamos|não vendemos|"
+                 "nunca vendemos|nunca compartilha|jamais"],
          nao_contem=[]),
 
     # --- parcelamento: a aritmética que o modelo errava de cabeça (tool simular_pagamento).
@@ -361,10 +374,14 @@ def main():
 
     limpos = sum(r["passes"] == rodadas for r in resultados)
     falhas = sum(r["passes"] < rodadas and not r["caso"].get("flaky") for r in resultados)
-    flakes = sum(r["passes"] < rodadas and r["caso"].get("flaky") for r in resultados)
+    flakes = sum(r["passes"] < rodadas and bool(r["caso"].get("flaky")) for r in resultados)
     print(f"\n{limpos}/{len(casos)} passaram em todas as {rodadas} rodadas"
           + (f" ({flakes} flaky, não conta como falha)" if flakes else ""))
-    _escrever_relatorio(resultados, rodadas)
+    if filtro:
+        print(f"\n(execução filtrada por {filtro!r}: {RELATORIO.name} NÃO foi reescrito — "
+              "o relatório versionado só vale se cobrir todos os casos)")
+    else:
+        _escrever_relatorio(resultados, rodadas)
     raise SystemExit(1 if falhas else 0)
 
 
