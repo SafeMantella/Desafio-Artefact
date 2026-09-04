@@ -409,6 +409,11 @@ def test_calcular_frete():
     assert "Região Metropolitana de Campo Grande" in r_cg
     assert "motoboy" in r_cg
 
+    # 1.1 Região Metropolitana (prefixo 791x)
+    r_rm = calcular_frete.invoke({"cep": "79110-000", "produto_ou_categoria": "violão"})
+    assert "Região Metropolitana de Campo Grande" in r_rm
+    assert "motoboy" in r_rm
+
     # 2. Outras cidades (São Paulo)
     r_sp = calcular_frete.invoke({"cep": "01310-100", "produto_ou_categoria": "violão"})
     assert "PAC (Correios)" in r_sp

@@ -36,7 +36,11 @@ def _podar(state: dict) -> dict:
 
 
 def build_agent():
-    """Retorna o agente compilado. O histórico é persistido em emporio.db por thread_id."""
+    """Retorna o agente compilado. O histórico é persistido em emporio.db por thread_id.
+    
+    Abre conexão SQLite persistente para o checkpointer; instancie uma vez por processo
+    ou reutilize via singleton/cache de recurso (ex.: @st.cache_resource).
+    """
     llm = ChatOpenAI(
         base_url=OPENAI_BASE_URL,
         api_key=OPENAI_API_KEY,

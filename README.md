@@ -38,8 +38,8 @@ pagamento, frete, garantia). Perguntas fora do escopo da loja são recusadas edu
 - *"Vocês vendem cordas de violão?"* → explica que a loja não trabalha com acessórios
 - *"Me passa uma receita de bolo?"* → recusa educadamente e volta ao contexto da loja
 
-Cinco conversas completas estão em [`examples/`](examples/), e a avaliação automática de 33
-cenários (3 rodadas cada) em [`eval_report.md`](eval_report.md).
+Cinco conversas completas estão em [`examples/`](examples/), e a avaliação de ponta a ponta com 38
+cenários em [`test_live.py`](test_live.py) (com benchmark inicial de 33 casos em [`eval_report.md`](eval_report.md)).
 
 ---
 
@@ -95,7 +95,7 @@ Variáveis de ambiente (`.env`):
 
 ```bash
 python test_agent.py             # 13 checks determinísticos, sem LLM — segundos
-python test_live.py              # 33 casos × 3 rodadas contra o LM Studio — horas
+python test_live.py              # 38 casos × 3 rodadas contra o LM Studio — horas
 python test_live.py --rodadas 1  # 1 rodada só, para iterar
 python test_live.py identidade   # só os casos cujo nome contém "identidade"
 ```
@@ -384,7 +384,7 @@ Regra de política: vive só no texto, não no código nem no prompt.
 Dois níveis, ambos com `assert` e um `main()` próprio, sem pytest:
 
 - **`test_agent.py`** (13 funções, sem LLM): a lógica determinística — views do ETL e a correção de marca, roteamento das 10 seções de política, as tools de dados, a calculadora de frete (`calcular_frete`), a verificação de identidade contra os 20 pedidos, a aritmética de `simular_pagamento` (e a conferência das constantes contra o manual) e a poda de histórico. Inclui `test_policies_sem_perda`, que garante que a curadoria de `policies.md` mexeu em forma e não em conteúdo: todo número, valor e e-mail do `policies_raw.md` sobrevive no curado. Rápido, roda em qualquer lugar.
-- **`test_live.py`** (33 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta — cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é o que trava regressão de comportamento quando o prompt muda.
+- **`test_live.py`** (38 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta — cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo local), mas é o que trava regressão de comportamento quando o prompt muda.
 
 Evals: Cada execução escreve **[`eval_report.md`](eval_report.md)** com a taxa e a latência (mediana e pior caso) de cada caso. O arquivo é versionado de propósito: quem for avaliar o projeto vê o número sem precisar instalar o LM Studio e baixar o modelo.
 
