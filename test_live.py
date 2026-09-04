@@ -36,10 +36,13 @@ RELATORIO = ROOT / "eval_report.md"
 #   retorno real da tool (todo campo sensível, sempre atualizado), não de uma lista à mão.
 # flaky: falha não conta como gate (comportamento conhecidamente não determinístico).
 CASOS = [
+    # 12 violões cabem no filtro. Um exemplo real reorganizou a lista em "nylon"/"aço"
+    # inventados e derrubou o Yamaha C40 no processo — checar mais de um item da lista
+    # (não só o primeiro) pega esse tipo de perda.
     dict(nome="catalogo_faixa_preco",
          turnos=["Oi! Quais violões vocês têm disponíveis até R$ 1000?"],
          tool_esperada="buscar_produtos",
-         contem=["Tagima Memphis"], nao_contem=["Martin D-28", "R$ 11.499"]),
+         contem=["Tagima Memphis", "Yamaha C40"], nao_contem=["Martin D-28", "R$ 11.499"]),
 
     dict(nome="preco_produto_especifico",
          turnos=["Quanto custa o Takamine GD20?"],
@@ -51,10 +54,14 @@ CASOS = [
          tool_esperada="detalhe_produto",
          contem=["2.089,05"], nao_contem=[]),
 
+    # O teto real de parcelamento do F310 (R$ 699,90) é 6x — 699,90/12 = R$ 58,33, abaixo do
+    # mínimo de R$ 100 da faixa 7x-12x (§3.1). Um exemplo real citou "até 12x" numa frase de
+    # fechamento sem ter chamado simular_pagamento nesse turno — número de memória, errado.
     dict(nome="promocao_inexistente_nao_afirmada",
          turnos=["O Yamaha F310 tem alguma promoção?"],
          tool_esperada="detalhe_produto",
-         contem=["664,90"], nao_contem=["de R$ 699,90 por", "promoção ativa:"]),
+         contem=["664,90"],
+         nao_contem=["de R$ 699,90 por", "promoção ativa:", "até 12x", "em 12x", "em até 12x"]),
 
     dict(nome="info_loja_endereco",
          turnos=["Qual o endereço da loja?"],

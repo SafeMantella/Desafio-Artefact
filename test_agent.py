@@ -96,6 +96,17 @@ def test_consultar_politica():
     assert call("posso trocar a boquilha do saxofone?").startswith("## 4."), "boquilha -> seção 4"
     assert call("fiz regulagem especial no violão, posso trocar?").startswith("## 4."), "setup/regulagem -> seção 4"
 
+    # "reclamações" (plural) não casava: a palavra-chave só tinha o singular, e o título da
+    # seção 7 ("Atendimento via WhatsApp") não contém "reclama" pra salvar pelo fallback de
+    # título — ao contrário de "trocas"/"devoluções"/"garantias"/"entregas", que colam no
+    # próprio título da seção e por isso nunca quebraram. Achado rodando o agente de verdade:
+    # o modelo perguntou "reclamações" (com o plural que ele mesmo escolheu) e caiu no
+    # fallback "não identifiquei o tópico", achou que a política não cobria 24h de retorno.
+    assert call("quero fazer uma reclamação, em quanto tempo tenho retorno?").startswith("## 7."), \
+        "reclamação (singular) -> seção 7"
+    assert call("vocês têm um canal de reclamações?").startswith("## 7."), \
+        "reclamações (plural) -> seção 7"
+
     # §5.2 (avaria/extravio no transporte): antes desta rodada TODO esse vocabulário caía
     # no fallback "não identifiquei o tópico" e o modelo reformulava para "defeito" —
     # respondendo com a §4 (troca em 30 dias) uma situação que a §5.2 resolve de outro
@@ -322,8 +333,14 @@ def test_simular_pagamento():
     # 2199/12 = 183,25 >= 100 -> cabe em 12x
     assert "12x sem juros, de R$ 183,25" in sim(2199)
     assert "R$ 2.089,05" in sim(2199)                      # PIX -5%
+    # total do cartão vem PRONTO da ferramenta (= preco_de_tabela, "sem juros" é isso por
+    # definição) — sem essa conta pra fazer, o modelo não tem como multiplicar parcela × n
+    # de cabeça e errar (foi exatamente isso que aconteceu num exemplo real: 183,25 × 12
+    # virou "R$ 2.238,00" em vez de R$ 2.199,00).
+    assert "total R$ 2.199,00" in sim(2199), sim(2199)
     # 549/12 = 45,75 < 100 e 549/7 = 78,43 < 100; 549/6 = 91,50 >= 80 -> teto é 6x
     assert "6x sem juros, de R$ 91,50" in sim(549), sim(549)
+    assert "total R$ 549,00" in sim(549), sim(549)
     # abaixo do mínimo até em 2x
     assert "só à vista" in sim(40)
     # frete metropolitano: a única metade calculável

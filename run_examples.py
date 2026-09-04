@@ -2,7 +2,9 @@
 
 Precisa do LM Studio no ar. Rode:  python run_examples.py
 Cada cenário roda numa thread nova; o transcript mostra as chamadas de ferramenta.
+Filtro opcional, igual ao test_live.py:  python run_examples.py 01_catalogo
 """
+import sys
 import uuid
 
 from langchain_core.messages import AIMessage, HumanMessage, ToolMessage
@@ -59,10 +61,12 @@ def _rotulo(m) -> str:
 
 
 def main() -> None:
+    filtro = sys.argv[1] if len(sys.argv) > 1 else ""
+    exemplos = [e for e in EXEMPLOS if filtro in e[0]]
     agente = build_agent()
     out = ROOT / "examples"
     out.mkdir(exist_ok=True)
-    for slug, descricao, turnos in EXEMPLOS:
+    for slug, descricao, turnos in exemplos:
         thread = f"ex-{slug}-{uuid.uuid4().hex[:6]}"
         vistas = 0
         blocos = [f"# {descricao}\n", f"_Modelo: {MODEL}. Gerado por `run_examples.py`._\n"]

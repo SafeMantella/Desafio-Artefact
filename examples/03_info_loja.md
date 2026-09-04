@@ -26,21 +26,17 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 > |---|---|
 > | Razão Social | Empório da Música Instrumentos Musicai […]
 
-**Assistente:** Oi! Tudo bem? Sou a **melodIA**, da Empório da Música. 🎸
+**Assistente:** Olá! Sou a melodIA, da Empório da Música — sua música começa aqui! 😊
 
-Sobre o endereço e horário de sábado:
+Sobre as suas perguntas:
+- **Endereço:** Rua 14 de Maio, 3200 — Centro, Campo Grande - MS, CEP 79202-333
+- **Sábado:** abrimos das 09:00 às 13:00
 
-📍 **Endereço:** Rua 14 de Maio, 3200 — Centro, Campo Grande - MS, CEP 79202-333
-
-⏰ **Horário de sábado:** das 09:00 às 13:00
-
-A gente atende de segunda a sexta das 09:00 às 18:00 também, e no domingo fica fechado.
-
-E aí, já tem algum instrumento em mente ou quer dar uma olhada no que a gente tem? Sua música começa aqui! 🎵
+E aí, como posso te ajudar hoje? Se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico!
 
 **Cliente:** Vocês parcelam no cartão?
 
-> 🔧 chama `consultar_politica(topico='formas de pagamento')`
+> 🔧 chama `consultar_politica(topico='formas de pagamento e parcelamento')`
 
 > 🔧 `consultar_politica` →
 >
@@ -61,15 +57,13 @@ E aí, já tem algum instrumento em mente ou quer dar uma olhada no que a gente 
 > - Parcelamento de 7x a 12x: sem juros, parcela mínima de R\$ 100,00.
 > - Combinação de formas de pagamento: permitida (ex.: PIX + cartão) para compras acima de R\$ 2.000,00.
 
-**Assistente:** Sim, parcelamos no cartão! 🎸💳
+**Assistente:** Sim, parcelamos no cartão! 😊
 
-**No Cartão de Crédito:**
-- Até **12x sem juros**, desde que a parcela seja de pelo menos R\$ 100,00
+Segundo nossa política:
+- **Até 3x:** sem juros, sem valor mínimo (exceto compras abaixo de R\$ 50,00)
+- **4x a 6x:** sem juros, mínimo de R\$ 80,00
+- **7x a 12x:** sem juros, mínimo de R\$ 100,00
 
-**Outras opções:**
-- Até **3x sem juros** (sem valor mínimo, exceto se a compra for abaixo de R\$ 50)
-- De **4x a 6x sem juros** (mínimo de R\$ 80,00)
+E tem mais: para compras acima de R\$ 2.000,00, você pode combinar formas — parte no PIX (com 5% de desconto) e o resto no cartão!
 
-E também aceitamos **PIX com 5% de desconto** e boleto bancário.
-
-Tem algum instrumento em mente? Posso te mostrar o que temos disponível! Sua música começa aqui. 🎵
+Quer saber mais sobre algum instrumento ou tem alguma dúvida específica?

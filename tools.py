@@ -99,8 +99,8 @@ for _sec, _palavras in {
           "liquidacao", "rain check", "cumulativo", "cumulativa", "cumulatividade",
           "reserva de preco"],
     "7": ["whatsapp", "atendimento", "contato", "falar com atendente", "telefone", "numero da loja",
-          "reclamacao", "reclamar", "fora de estoque", "descontinuado", "sac", "ouvidoria",
-          "falar com humano", "3321-4500", "3341-4444"],
+          "reclamacao", "reclamacoes", "reclamar", "fora de estoque", "descontinuado", "sac",
+          "ouvidoria", "falar com humano", "3321-4500", "3341-4444"],
     "8": ["garantia", "defeito de fabricacao", "90 dias", "fabricante", "cobertura",
           "o que cobre", "nao cobre", "assistencia", "desgaste", "trastes", "feltros",
           "garantia legal", "garantia do fabricante", "certificado de garantia",
@@ -510,8 +510,13 @@ def simular_pagamento(preco_de_tabela: float, ja_esta_em_promocao: bool = False,
         linhas.append("- Cartão de crédito: só à vista. Nesse valor, mesmo em 2x a parcela "
                       "ficaria abaixo do mínimo permitido pela política.")
     else:
-        linhas.append(f"- Cartão de crédito: até {n}x sem juros, de {_brl(parcela)} cada. "
-                      f"Acima de {n}x a parcela cairia abaixo do mínimo da faixa.")
+        # Total sempre é preco_de_tabela — "sem juros" é isso por definição. Devolver pronto
+        # em vez de deixar o modelo multiplicar parcela × n na resposta final: foi
+        # exatamente essa conta (183,25 × 12) que ele fez de cabeça e errou (deu 2.238,00
+        # em vez de 2.199,00) num exemplo real.
+        linhas.append(f"- Cartão de crédito: até {n}x sem juros, de {_brl(parcela)} cada "
+                      f"(total {_brl(preco_de_tabela)}). Acima de {n}x a parcela cairia "
+                      "abaixo do mínimo da faixa.")
 
     if preco_de_tabela > _COMBINACAO_ACIMA_DE:
         linhas.append(f"- Acima de {_brl(_COMBINACAO_ACIMA_DE)} dá para COMBINAR formas "

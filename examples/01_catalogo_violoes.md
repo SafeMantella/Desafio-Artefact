@@ -6,7 +6,7 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 
 **Cliente:** Oi! Quais opções de violão vocês têm disponíveis até R\$ 1000?
 
-> 🔧 chama `buscar_produtos(termo='violão', categoria='violão', preco_max=1000, apenas_disponiveis=True)`
+> 🔧 chama `buscar_produtos(categoria='violão', preco_max=1000, apenas_disponiveis=True)`
 
 > 🔧 `buscar_produtos` →
 >
@@ -24,36 +24,30 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 > - Tagima Woodstock Dreadnought Natural (Violões) — R\$ 899,00 — à vista no PIX R\$ 854,05
 > - Tagima TW-7 7 Cordas Aço Natural ( […]
 
-**Assistente:** Olá! Sou a **melodIA**, assistente virtual da Empório da Música. Sua música começa aqui! 🎸
+**Assistente:** Olá! Sou a melodIA, da Empório da Música — sua música começa aqui! 😊
 
-Encontrei **12 violões** disponíveis até R\$ 1.000, todos em estoque:
+Encontrei **12 violões** disponíveis até R\$ 1.000,00:
 
-| Modelo | Preço Tabela | À vista no PIX |
-|--------|-------------|---------------|
-| Tagima Memphis AC-39 Nylon Natural | R\$ 429,90 | R\$ 408,40 |
-| Rozini RC-104 Nylon Estudante | R\$ 459,90 | R\$ 436,90 |
-| Shelby SN-100 Folk Aço Preto | R\$ 549,00 | R\$ 521,55 |
-| Giannini GF-1R Aço Folk Sunburst | R\$ 579,90 | R\$ 550,90 |
-| Yamaha C40 Nylon Natural | R\$ 599,90 | R\$ 569,90 |
-| Giannini GN-15 Nylon Cedr Natural | R\$ 689,00 | R\$ 654,55 |
-| Yamaha F310 Aço Natural | R\$ 699,90 | R\$ 664,90 |
-| Tagima Dallas Tuner Aço Natural | R\$ 749,00 | R\$ 711,55 |
-| Shelby SGD-195E Elétrico Aço Sunburst | R\$ 799,00 | R\$ 759,05 |
-| Yamaha C70 Nylon Natural | R\$ 849,00 | R\$ 806,55 |
-| Tagima Woodstock Dreadnought Natural | R\$ 899,00 | R\$ 854,05 |
-| Tagima TW-7 7 Cordas Aço Natural | R\$ 999,00 | R\$ 949,05 |
+- Tagima Memphis AC-39 Nylon Natural — R\$ 429,90
+- Rozini RC-104 Nylon Estudante — R\$ 459,90
+- Shelby SN-100 Folk Aço Preto — R\$ 549,00
+- Giannini GF-1R Aço Folk Sunburst — R\$ 579,90
+- Yamaha C40 Nylon Natural — R\$ 599,90
+- Giannini GN-15 Nylon Cedr Natural — R\$ 689,00
+- Yamaha F310 Aço Natural — R\$ 699,90
+- Tagima Dallas Tuner Aço Natural — R\$ 749,00
+- Shelby SGD-195E Elétrico Aço Sunburst — R\$ 799,00
+- Yamaha C70 Nylon Natural — R\$ 849,00
+- Tagima Woodstock Dreadnought Natural — R\$ 899,00
+- Tagima TW-7 7 Cordas Aço Natural — R\$ 999,00
 
-Qual modelo te chamou mais atenção? Posso te passar as especificações técnicas de algum deles!
+Se quiser ver o preço à vista no PIX ou como fica parcelado em algum deles, é só me chamar! E se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico.
 
-Se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico.
-
----
-
-*Se precisar de mais alguma coisa, é só chamar! Sua música começa aqui.* 🎵
+Como posso te ajudar mais hoje?
 
 **Cliente:** O Yamaha F310 tem alguma promoção?
 
-> 🔧 chama `detalhe_produto(nome_ou_id='Yamaha F310')`
+> 🔧 chama `detalhe_produto(nome_ou_id='Yamaha F310 Aço Natural')`
 
 > 🔧 `detalhe_produto` →
 >
@@ -67,21 +61,12 @@ Se você já é nosso cliente, me passa seu e-mail que eu já puxo seu históric
 > 
 > Violão folk aço Yamaha com corpo robusto e timbre encorpado. Um dos modelos mais vendidos do mundo para iniciantes e intermediários.
 
-**Assistente:** Olá! Sou a **melodIA**, assistente virtual da Empório da Música. Sua música começa aqui! 🎸
+**Assistente:** Olá! Sou a melodIA, da Empório da Música — sua música começa aqui! 😊
 
-O **Yamaha F310 Aço Natural** não tem nenhuma promoção ativa no momento.
+O **Yamaha F310 Aço Natural** não tem nenhuma promoção ativa no momento. Ele está sendo vendido pelo preço de tabela: **R\$ 699,90**.
 
-Mas atenção: ele já vem com o **desconto fixo de 5% no PIX** (R\$ 664,90), que é um benefício permanente da loja — não é uma promoção temporária!
+Mas tem uma boa notícia: a loja oferece um **desconto fixo de 5% no PIX** para todos os instrumentos — isso é um benefício permanente, não uma promoção temporária!
 
-**Resumo do Yamaha F310:**
-- Preço de tabela: **R\$ 699,90**
-- À vista no PIX: **R\$ 664,90** (desconto de 5% fixo)
-- Em estoque: **Sim** ✅
+Se quiser saber quanto fica à vista no PIX ou como fica parcelado, é só me chamar! E se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico.
 
-Quer que eu te mostre as especificações técnicas completas ou tem alguma outra dúvida sobre ele?
-
-Se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico.
-
----
-
-*Qualquer coisa, é só chamar! Sua música começa aqui.* 🎵
+Tem mais alguma dúvida sobre algum violão?

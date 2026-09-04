@@ -54,7 +54,12 @@ cenários em [`test_live.py`](test_live.py), com taxa e latência por caso em [`
 - **Python 3.11+**
 - **[LM Studio](https://lmstudio.ai/)** com um modelo que atenda a três requisitos:
   suporte a *tool use* / function calling, português do Brasil decente e janela de
-  contexto de 16k ou mais. O projeto não depende de nenhum modelo específico — o `.env`
+  contexto de **20k ou mais** (subiu da recomendação anterior de 16k — o system prompt
+  sozinho já tem ~3,5k tokens, mais ~1,5-2k dos schemas das 7 ferramentas: ~5,5k de custo
+  fixo por turno, antes de qualquer histórico ou retorno de ferramenta. A margem em 16k
+  ficou apertada conforme o prompt cresceu com mais guardrails, mesmo o padrão
+  `MAX_HISTORY_TOKENS=8000` ainda cabendo tecnicamente). O projeto não depende de nenhum
+  modelo específico — o `.env`
   troca o modelo e o endpoint sem tocar em código, e foi exercitado com vários portes
   diferentes ao longo do desenvolvimento. Qual foi usado na avaliação versionada está no
   cabeçalho do [`eval_report.md`](eval_report.md), que o próprio `test_live.py` escreve.
