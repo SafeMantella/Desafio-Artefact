@@ -418,6 +418,13 @@ Para a exceção não virar dívida escondida, ela vem com um guard-rail:
 
 1. Todos os números ficam numa **tabela única** no topo do módulo, com o parágrafo do manual
    anotado ao lado (`_PIX_DESCONTO`, `_FAIXAS_PARCELAMENTO`, `_FRETE_CG`).
+   `_FAIXAS_PARCELAMENTO` implementa a **§3.1**, a regra específica, e não a linha da tabela
+   da §3 — que diz "parcela mínima de R$ 100,00" como se fosse fixa. As duas só concordam
+   de 7x a 12x; a divergência está registrada no cabeçalho de `policies.md`, junto com as do
+   WhatsApp e do e-mail. Como `consultar_politica` devolve a §3 **inteira**, o agente lê as
+   duas versões e pode recusar um parcelamento que a §3.1 permite — por isso o caso de eval
+   `parcelamento_ate_3x_sem_minimo` trava exatamente a fronteira (R$ 240 em 3x, parcela de
+   R$ 80,00, permitido).
 2. `test_simular_pagamento` confere **cada constante contra o texto de `policies.md`**. Se o
    manual mudar e o código não, o teste quebra dizendo qual constante divergiu. É o que
    torna a duplicação sustentável em vez de invisível.

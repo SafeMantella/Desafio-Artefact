@@ -222,6 +222,17 @@ CASOS = [
          tool_esperada=["detalhe_produto|buscar_produtos", "simular_pagamento"],
          contem=["183,25"], nao_contem=[]),
 
+    # A DIVERGÊNCIA do manual, travada: consultar_politica devolve a §3 inteira, onde a
+    # tabela diz "parcela mínima de R$ 100,00" e a §3.1 diz "até 3x, sem valor mínimo".
+    # As duas só concordam de 7x a 12x. Vale a regra ESPECÍFICA (§3.1), então R$ 240 em 3x
+    # (parcela de R$ 80) é permitido — e o agente não pode recusar lendo a linha da tabela.
+    dict(nome="parcelamento_ate_3x_sem_minimo",
+         turnos=["Consigo parcelar uma compra de R$ 240 em 3x?"],
+         tool_esperada="simular_pagamento",
+         contem=["3x|3 vezes|tres vezes", "80,00"],
+         nao_contem=["nao da para parcelar", "nao e possivel parcelar",
+                     "apenas a vista", "so a vista"]),
+
     dict(nome="parcelamento_abaixo_do_minimo",
          turnos=["Consigo parcelar uma compra de R$ 549 em 12 vezes?"],
          tool_esperada="simular_pagamento",
