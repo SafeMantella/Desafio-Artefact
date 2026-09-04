@@ -360,6 +360,7 @@ def detalhe_produto(nome_ou_id: str) -> str:
 _PIX_DESCONTO = 0.05                                          # §3, linha do PIX
 _FAIXAS_PARCELAMENTO = ((3, 50.0), (6, 80.0), (12, 100.0))    # §3.1: (até Nx, parcela mínima)
 _FRETE_CG = (500.0, 35.0)                                     # §5.1: (grátis acima de, taxa fixa)
+_COMBINACAO_ACIMA_DE = 2000.0                                 # §3.1: PIX + cartão na mesma compra
 
 
 def _max_parcelas(valor: float) -> tuple[int, float]:
@@ -373,7 +374,7 @@ def _max_parcelas(valor: float) -> tuple[int, float]:
 
 @tool
 def simular_pagamento(preco_de_tabela: float, ja_esta_em_promocao: bool = False,
-                      entrega_em_campo_grande: bool = False) -> str:
+                      entrega_em_campo_grande: bool = False, valor_no_pix: float = 0) -> str:
     """Calcula as formas de pagamento para um valor: preço à vista no PIX, em quantas vezes
     dá para parcelar e quanto fica cada parcela. Opcionalmente, o frete metropolitano.
 
@@ -394,11 +395,41 @@ def simular_pagamento(preco_de_tabela: float, ja_esta_em_promocao: bool = False,
         PIX não incide sobre preço promocional (política 6.2), e a ferramenta respeita isso.
     entrega_em_campo_grande: True só se o cliente disse que é em Campo Grande ou região
         metropolitana. Se ele não disse, deixe False e pergunte a cidade.
+    valor_no_pix: só para COMBINAR formas de pagamento, o que a política permite acima de
+        R$ 2.000,00. Preencha com quanto o cliente quer pagar no PIX; o resto vai no
+        cartão e a ferramenta calcula as duas partes. Deixe 0 se ele não pediu combinação.
     """
     log.debug("simular_pagamento(preco=%s, promo=%s, cg=%s)",
               preco_de_tabela, ja_esta_em_promocao, entrega_em_campo_grande)
     if not preco_de_tabela or preco_de_tabela <= 0:
         return "Preciso do valor da compra para calcular. Confirme o produto com o cliente."
+
+    # §3.1: combinar formas só é permitido acima de R$ 2.000,00
+    if valor_no_pix and valor_no_pix > 0:
+        if preco_de_tabela <= _COMBINACAO_ACIMA_DE:
+            return (f"Combinar formas de pagamento só é permitido em compras acima de "
+                    f"{_brl(_COMBINACAO_ACIMA_DE)}, e esta é de {_brl(preco_de_tabela)}. "
+                    "Explique isso ao cliente e ofereça uma forma só.")
+        if valor_no_pix >= preco_de_tabela:
+            return ("O valor no PIX tem que ser MENOR que o total — senão não é combinação, "
+                    "é pagamento à vista no PIX. Confirme com o cliente quanto ele quer "
+                    "colocar em cada forma.")
+        desconto = 0.0 if ja_esta_em_promocao else round(valor_no_pix * _PIX_DESCONTO, 2)
+        no_cartao = round(preco_de_tabela - valor_no_pix, 2)
+        n_c, parc_c = _max_parcelas(no_cartao)
+        linhas = [
+            f"Combinação de formas para {_brl(preco_de_tabela)} (permitida acima de "
+            f"{_brl(_COMBINACAO_ACIMA_DE)}):",
+            f"- No PIX: {_brl(valor_no_pix)}" + (
+                f" com {int(_PIX_DESCONTO * 100)}% de desconto -> paga {_brl(valor_no_pix - desconto)}"
+                if desconto else " (sem os 5%: o preço já é promocional, política 6.2)"),
+            f"- No cartão: {_brl(no_cartao)}" + (
+                f" em até {n_c}x sem juros de {_brl(parc_c)}" if n_c > 1
+                else " — só à vista, nesse valor a parcela ficaria abaixo do mínimo"),
+            f"- TOTAL a pagar: {_brl(preco_de_tabela - desconto)}"
+            + (f" (economia de {_brl(desconto)} na parte do PIX)" if desconto else ""),
+        ]
+        return "\n".join(linhas)
 
     n, parcela = _max_parcelas(preco_de_tabela)
     pct = int(_PIX_DESCONTO * 100)
@@ -416,6 +447,12 @@ def simular_pagamento(preco_de_tabela: float, ja_esta_em_promocao: bool = False,
     else:
         linhas.append(f"- Cartão de crédito: até {n}x sem juros, de {_brl(parcela)} cada. "
                       f"Acima de {n}x a parcela cairia abaixo do mínimo da faixa.")
+
+    if preco_de_tabela > _COMBINACAO_ACIMA_DE:
+        linhas.append(f"- Acima de {_brl(_COMBINACAO_ACIMA_DE)} dá para COMBINAR formas "
+                      "(ex.: parte no PIX, parte no cartão). Ofereça ao cliente; se ele "
+                      "quiser, pergunte quanto vai no PIX e chame esta ferramenta de novo "
+                      "com valor_no_pix preenchido.")
 
     gratis_acima, taxa = _FRETE_CG
     if entrega_em_campo_grande:

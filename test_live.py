@@ -226,6 +226,14 @@ CASOS = [
     # tabela diz "parcela mínima de R$ 100,00" e a §3.1 diz "até 3x, sem valor mínimo".
     # As duas só concordam de 7x a 12x. Vale a regra ESPECÍFICA (§3.1), então R$ 240 em 3x
     # (parcela de R$ 80) é permitido — e o agente não pode recusar lendo a linha da tabela.
+    # §3.1, última regra: combinar PIX + cartão acima de R$ 2.000. Os 5% valem só sobre a
+    # parte no PIX (R$ 1.000 -> R$ 950), e o cartão parcela o que sobra.
+    dict(nome="pagamento_combinado_acima_de_2000",
+         turnos=["Quero levar o Martin D-28E. Posso pagar uma parte no pix e o resto no "
+                 "cartão?", "Coloco R$ 1.000 no pix."],
+         tool_esperada="simular_pagamento",
+         contem=["950", "cartao|cartão"], nao_contem=["não é permitido", "não pode combinar"]),
+
     dict(nome="parcelamento_ate_3x_sem_minimo",
          turnos=["Consigo parcelar uma compra de R$ 240 em 3x?"],
          tool_esperada="simular_pagamento",

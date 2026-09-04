@@ -429,6 +429,11 @@ Para a exceção não virar dívida escondida, ela vem com um guard-rail:
    manual mudar e o código não, o teste quebra dizendo qual constante divergiu. É o que
    torna a duplicação sustentável em vez de invisível.
 
+As quatro regras da §3.1 estão em código, inclusive a combinação de formas: acima de
+R$ 2.000,00 a simulação oferece pagar parte no PIX e parte no cartão, e com o valor do PIX
+informado calcula as duas pontas — os 5% incidem **só** sobre a parte paga no PIX, e o
+parcelamento é recalculado sobre o que sobra no cartão. O agente não divide de cabeça.
+
 O frete entra só na metade calculável (região metropolitana: grátis acima de R$ 500, senão
 R$ 35). Para outras cidades depende de CEP, peso e dimensões: a ferramenta **declara que não
 calcula**, manda informar as modalidades da §5.2 e oferecer o contato da equipe para
@@ -474,9 +479,6 @@ cotação. Uma tool que só reimprimisse a §5 seria uma segunda porta para a me
   "Violão para iniciante" também não funciona: está só em `description`, que fica fora do
   match de propósito (ver o ruído nome × descrição abaixo).
 - **`consultar_politica` é por palavra-chave.** Uma pergunta com vocabulário muito distante das palavras mapeadas pode não casar a seção certa.
-- **Combinação de formas de pagamento não é simulada.** A §3.1 permite PIX + cartão acima
-  de R$ 2.000,00; `simular_pagamento` não oferece essa composição — ela só aparece se o
-  cliente perguntar as regras de pagamento e o agente ler a seção.
 - **Frete e parcelamento não são calculados** — o agente informa as regras da política, não simula valores para um CEP ou uma compra específica.
 - **Preço por item de pedido não existe no dado.** `order_items.csv` só tem quantidade. O
   que a loja cobrou está apenas no total do pedido, e em 2 dos 20 pedidos ele não bate com a

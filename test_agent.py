@@ -280,8 +280,9 @@ def test_simular_pagamento():
     for v in _FRETE_CG:
         assert _brl(v) in politica, f"valor de frete {_brl(v)} sumiu do manual"
 
-    sim = lambda v, cg=False, promo=False: simular_pagamento.invoke(
-        {"preco_de_tabela": v, "entrega_em_campo_grande": cg, "ja_esta_em_promocao": promo})
+    sim = lambda v, cg=False, promo=False, pix=0: simular_pagamento.invoke(
+        {"preco_de_tabela": v, "entrega_em_campo_grande": cg, "ja_esta_em_promocao": promo,
+         "valor_no_pix": pix})
 
     # 2199/12 = 183,25 >= 100 -> cabe em 12x
     assert "12x sem juros, de R$ 183,25" in sim(2199)
@@ -293,6 +294,21 @@ def test_simular_pagamento():
     # frete metropolitano: a única metade calculável
     assert "R$ 35,00" in sim(480, cg=True) and "grátis" in sim(520, cg=True)
     assert "NÃO tenho como calcular" in sim(480), "fora de CG não pode virar número"
+
+    # §3.1: combinar formas (PIX + cartão) só acima de R$ 2.000. Os 5% incidem apenas
+    # sobre a parte paga no PIX, e o parcelamento é recalculado sobre o que sobra no cartão.
+    from tools import _COMBINACAO_ACIMA_DE
+    assert _brl(_COMBINACAO_ACIMA_DE) in politica, "o limite da combinação sumiu do manual"
+    assert "COMBINAR formas" in sim(2500), "acima do limite, a opção tem que ser oferecida"
+    assert "COMBINAR formas" not in sim(1500), "abaixo do limite não pode oferecer"
+    comb = sim(2500, pix=1000)
+    assert "R$ 950,00" in comb, comb          # 1000 no PIX com -5%
+    assert "12x sem juros de R$ 125,00" in comb, comb   # 1500 no cartão
+    assert "R$ 2.450,00" in comb, comb        # total: 2500 - 50 de desconto
+    assert "só é permitido em compras acima" in sim(1500, pix=500)
+    assert "MENOR que o total" in sim(2500, pix=2500)
+    # promoção: os 5% não incidem nem na parte do PIX (§6.2)
+    assert "já é promocional" in sim(2500, pix=1000, promo=True)
 
     # PIX não acumula com promoção (§6.2), como na view v_produto. O produto 127 sai por
     # R$ 323,10 com a promo de 10%: no PIX continua 323,10, não 306,94.
