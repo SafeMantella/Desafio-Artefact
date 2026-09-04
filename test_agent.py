@@ -420,6 +420,12 @@ def test_calcular_frete():
     assert "SEDEX (Correios)" in r_sp
     assert "Jadlog (.package)" in r_sp
     assert "Seguro: Incluído" in r_sp
+    assert "Pacote: Violão" in r_sp
+    assert "105×45×15 cm" in r_sp
+
+    # 2.1 Resolução via catálogo para modelo sem categoria no nome
+    r_prod = calcular_frete.invoke({"cep": "01310-100", "produto_ou_categoria": "Yamaha C40"})
+    assert "Pacote: Violão" in r_prod
 
     # 3. Grande porte (baterias acústicas, pianos digitais, contrabaixos) -> cotação humana
     for grande in ("bateria acústica", "piano digital", "contrabaixo"):

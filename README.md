@@ -446,12 +446,18 @@ R$ 2.000,00 a simulação oferece pagar parte no PIX e parte no cartão, e com o
 informado calcula as duas pontas — os 5% incidem **só** sobre a parte paga no PIX, e o
 parcelamento é recalculado sobre o que sobra no cartão. O agente não divide de cabeça.
 
-O frete entra só na metade calculável (região metropolitana: grátis acima de R$ 500, senão
-R$ 35), junto com o prazo da §5.1 — 1 a 3 dias úteis, motoboy próprio, contato por telefone
-antes da entrega. Para outras cidades depende de CEP, peso e dimensões: a ferramenta
-**declara que não calcula**, manda informar as modalidades da §5.2 e oferecer o contato da
-equipe para cotação. Uma tool que só reimprimisse a §5 seria uma segunda porta para a mesma
-fonte — `consultar_politica` já faz isso.
+O frete é tratado em dois níveis com regras e ferramentas dedicadas:
+- **Região metropolitana de Campo Grande (§5.1):** calculado em `simular_pagamento` (grátis acima de R$ 500, senão taxa fixa de R$ 35), com entrega por motoboy próprio em 1 a 3 dias úteis.
+- **Outras cidades / Envio nacional (§5.2):** calculado pela ferramenta dedicada `calcular_frete(cep, produto_ou_categoria, ...)`. Como o catálogo (`products.csv`) não possui dados de medidas físicas e peso, o sistema adota uma **tabela de pacotes padronizados por categoria** (baseada em padrões de e-commerce de instrumentos musicais):
+  * **Violão:** 105 × 45 × 15 cm | 3,5 kg (cubagem: 11,8 kg)
+  * **Guitarra:** 105 × 40 × 12 cm | 4,5 kg (cubagem: 8,4 kg)
+  * **Teclado / Arranjador:** 105 × 40 × 15 cm | 6,0 kg (cubagem: 10,5 kg)
+  * **Ukulele:** 60 × 25 × 12 cm | 1,0 kg (cubagem: 3,0 kg)
+  * **Instrumentos de Sopro:** 60 × 25 × 18 cm | 2,5 kg (cubagem: 4,5 kg)
+  * **Cordas Orquestrais:** 80 × 30 × 15 cm | 2,5 kg (cubagem: 6,0 kg)
+  * **Padrão Geral:** 90 × 35 × 15 cm | 3,0 kg (cubagem: 7,9 kg)
+
+  A cubagem segue a fórmula dos Correios `(C × L × A) / 6000`, cobrando o maior entre peso real e volumétrico. A ferramenta resolve a categoria do produto no catálogo automaticamente caso o cliente informe apenas o modelo (ex.: "Yamaha C40"), aplica multiplicadores regionais de distância a partir de MS (Sudeste 1.15, Sul 1.20, Nordeste 1.40, Norte 1.60, Centro-Oeste 1.00) e apresenta 3 cotações completas: PAC (5 a 12 dias), SEDEX (2 a 5 dias) e Jadlog (3 a 8 dias), todas com seguro incluso. Para instrumentos de grande porte (baterias acústicas, pianos digitais, contrabaixos), a ferramenta bloqueia o cálculo automático e orienta contato humano via WhatsApp ou e-mail.
 
 A §5.1 deixa duas coisas em aberto e as duas viraram **suposição documentada** (no cabeçalho
 de `policies.md` e travada no `test_simular_pagamento`):
@@ -524,10 +530,10 @@ catálogo tiver o item.
   prompt manda **perguntar**, em vez de escolher um procedimento no escuro. Antes disso todo
   esse vocabulário (`avaria`, `amassada`, `extravio`, `sumiu`) caía no fallback e o modelo
   reformulava para "defeito", respondendo com a §4 uma situação da §5.
-- **Frete fora de Campo Grande não é calculado.** O parcelamento e o frete metropolitano
-  são calculados (§13), mas para outras cidades a §5.2 depende de CEP, peso e dimensões —
-  dados que o dataset não tem. O agente declara isso e oferece cotação com a equipe, em vez
-  de estimar. Do mesmo modo, a §5.2 diz que o envio tem seguro e o que fazer em caso de
+- **Dimensões e pesos de frete estimados por categoria.** Como `products.csv` não contém
+  medidas físicas, o sistema adota pacotes padronizados por categoria para calcular o frete
+  fora de Campo Grande (ver §13). As medidas exatas da caixa de cada fabricante não constam
+  no banco. Do mesmo modo, a §5.2 diz que o envio tem seguro e o que fazer em caso de
   avaria, mas **abrir um sinistro é fora do escopo do protótipo**: o agente explica o
   procedimento e encaminha para a equipe.
 - **Preço por item de pedido não existe no dado.** `order_items.csv` só tem quantidade. O

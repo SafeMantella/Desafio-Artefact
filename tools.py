@@ -557,12 +557,27 @@ _GRANDE_PORTE = (
 )
 
 
+# Dimensões (C x L x A em cm) e pesos (kg) padronizados de embalagem por categoria (§5.2).
+# Adotados para viabilizar cálculos determinísticos quando o produto não possui medidas no catálogo:
+# chave: (comprimento_cm, largura_cm, altura_cm, peso_kg, rótulo)
+DIMENSOES_PADRAO = {
+    "violao": (105.0, 45.0, 15.0, 3.5, "Violão"),
+    "guitarra": (105.0, 40.0, 12.0, 4.5, "Guitarra"),
+    "teclado": (105.0, 40.0, 15.0, 6.0, "Teclado / Arranjador"),
+    "ukulele": (60.0, 25.0, 12.0, 1.0, "Ukulele"),
+    "sopro": (60.0, 25.0, 18.0, 2.5, "Instrumento de Sopro"),
+    "cordas": (80.0, 30.0, 15.0, 2.5, "Cordas Orquestrais"),
+    "padrao": (90.0, 35.0, 15.0, 3.0, "Instrumento (Padrão)"),
+}
+
+
 @tool
 def calcular_frete(cep: str, produto_ou_categoria: str = "",
                    peso_kg: float = 0.0, comprimento_cm: float = 0.0,
                    largura_cm: float = 0.0, altura_cm: float = 0.0) -> str:
     """Calcula o valor do frete e prazos para entregas fora de Campo Grande com base no CEP,
-    peso e dimensões do produto (política 5.2).
+    peso e dimensões do produto (política 5.2). Se peso ou dimensões não forem informados,
+    adota o padrão de embalagem da categoria do instrumento.
 
     ATENÇÃO: Instrumentos de grande porte (baterias acústicas, pianos digitais, contrabaixos)
     exigem frete especial com cotação individual. A ferramenta detecta esses itens e orienta
@@ -571,8 +586,8 @@ def calcular_frete(cep: str, produto_ou_categoria: str = "",
     cep: CEP de destino informado pelo cliente (ex.: '01310-100' ou '01310100').
     produto_ou_categoria: nome do instrumento ou categoria (ex.: 'violão', 'Tagima T-635',
         'bateria acústica', 'contrabaixo', 'teclado').
-    peso_kg: peso do produto em kg (se 0, estima pelo tipo de instrumento).
-    comprimento_cm: comprimento em cm (se 0, estima pelo tipo).
+    peso_kg: peso do produto em kg (se 0, usa o padrão da categoria).
+    comprimento_cm: comprimento em cm (se 0, usa o padrão da categoria).
     largura_cm: largura em cm.
     altura_cm: altura em cm.
     """
@@ -582,6 +597,16 @@ def calcular_frete(cep: str, produto_ou_categoria: str = "",
         return "Preciso de um CEP válido com pelo menos 5 dígitos para calcular o frete."
 
     alvo = _norm(produto_ou_categoria)
+    # Se o modelo foi informado mas não traz a categoria diretamente, busca no catálogo
+    if alvo and not any(k in alvo for k in ("violao", "violoes", "guitarra", "ukulele", "teclado", "sopro", "flauta", "sax", "corda")):
+        with closing(_conn()) as c:
+            row = c.execute(
+                "SELECT categoria FROM v_produto WHERE LOWER(name) LIKE ? OR LOWER(description) LIKE ? LIMIT 1",
+                [f"%{alvo}%", f"%{alvo}%"]
+            ).fetchone()
+            if row and row["categoria"]:
+                alvo = f"{alvo} {_norm(row['categoria'])}"
+
     # §5.2: Instrumentos de grande porte exigem cotação individual com atendente humano
     if any(p in alvo for p in _GRANDE_PORTE) or peso_kg > 25 or max(comprimento_cm, largura_cm, altura_cm) > 150:
         return (
@@ -601,21 +626,28 @@ def calcular_frete(cep: str, produto_ou_categoria: str = "",
             "- O cliente será contactado por telefone antes da entrega."
         )
 
-    # Estimativa volumétrica e de peso caso não informados
-    peso = peso_kg
-    vol = (comprimento_cm * largura_cm * altura_cm) / 6000.0 if (comprimento_cm and largura_cm and altura_cm) else 0.0
-    if peso <= 0:
-        if "ukulele" in alvo:
-            peso, vol = 1.0, 2.5
-        elif "violao" in alvo or "guitarra" in alvo:
-            peso, vol = 3.5, 9.0
-        elif "teclado" in alvo:
-            peso, vol = 6.0, 11.0
-        elif "sopro" in alvo or "flauta" in alvo or "sax" in alvo:
-            peso, vol = 2.0, 4.0
-        else:
-            peso, vol = 3.0, 6.0
+    # Resolução de dimensões e peso: usa dados informados ou aplica pacote padronizado por categoria
+    tipo_pacote = "padrao"
+    if "ukulele" in alvo:
+        tipo_pacote = "ukulele"
+    elif "violao" in alvo or "violoes" in alvo:
+        tipo_pacote = "violao"
+    elif "guitarra" in alvo:
+        tipo_pacote = "guitarra"
+    elif "teclado" in alvo:
+        tipo_pacote = "teclado"
+    elif any(s in alvo for s in ("sopro", "flauta", "sax", "clarinete", "trompete")):
+        tipo_pacote = "sopro"
+    elif any(s in alvo for s in ("corda", "violino", "viola", "violoncelo")):
+        tipo_pacote = "cordas"
 
+    def_c, def_l, def_a, def_peso, rotulo = DIMENSOES_PADRAO[tipo_pacote]
+    c_cm = comprimento_cm if comprimento_cm > 0 else def_c
+    l_cm = largura_cm if largura_cm > 0 else def_l
+    a_cm = altura_cm if altura_cm > 0 else def_a
+    peso = peso_kg if peso_kg > 0 else def_peso
+
+    vol = (c_cm * l_cm * a_cm) / 6000.0
     peso_cobrado = max(peso, vol, 1.0)
 
     # Multiplicador de distância regional a partir de Campo Grande/MS (prefixo 7)
@@ -637,7 +669,9 @@ def calcular_frete(cep: str, produto_ou_categoria: str = "",
     jadlog_valor = round((35.0 + peso_cobrado * 5.5) * mult, 2)
 
     return (
-        f"Cotação de frete para o CEP {cep} (peso cobrado: {peso_cobrado:.1f} kg) — Política 5.2:\n"
+        f"Cotação de frete para o CEP {cep} — Política 5.2:\n"
+        f"- Pacote: {rotulo} ({c_cm:.0f}×{l_cm:.0f}×{a_cm:.0f} cm | peso real: {peso:.1f} kg | "
+        f"peso cúbico: {vol:.1f} kg → cobrado: {peso_cobrado:.1f} kg)\n"
         f"- PAC (Correios): {_brl(pac_valor)} | Prazo estimado: 5 a 12 dias úteis | Rastreamento: Sim | Seguro: Incluído\n"
         f"- SEDEX (Correios): {_brl(sedex_valor)} | Prazo estimado: 2 a 5 dias úteis | Rastreamento: Sim | Seguro: Incluído\n"
         f"- Jadlog (.package): {_brl(jadlog_valor)} | Prazo estimado: 3 a 8 dias úteis | Rastreamento: Sim | Seguro: Incluído\n\n"
