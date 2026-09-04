@@ -407,11 +407,16 @@ def test_agente_compila():
 
 
 def test_calcular_frete():
-    from tools import calcular_frete
+    from tools import _brl, _FRETE_CG, _GRANDE_PORTE_FRETE, _PRAZO_CG, calcular_frete
+
     # 1. Campo Grande
     r_cg = calcular_frete.invoke({"cep": "79002-000", "produto_ou_categoria": "violão"})
     assert "Região Metropolitana de Campo Grande" in r_cg
     assert "motoboy" in r_cg
+    # o texto vem das MESMAS constantes que simular_pagamento usa (test_simular_pagamento já
+    # confere elas contra policies.md) — sem isso, esta string podia divergir em silêncio.
+    gratis_acima, taxa = _FRETE_CG
+    assert _brl(taxa) in r_cg and _brl(gratis_acima) in r_cg and _PRAZO_CG in r_cg, r_cg
 
     # 1.1 Região Metropolitana (prefixo 791x)
     r_rm = calcular_frete.invoke({"cep": "79110-000", "produto_ou_categoria": "violão"})
@@ -437,6 +442,17 @@ def test_calcular_frete():
         assert "Instrumento de grande porte" in r_gp
         assert "(67) 3341-4444" in r_gp
         assert "contato@emporiodamusica.com.br" in r_gp
+
+    # 3.1 REGRESSÃO: _GRANDE_PORTE_FRETE não pode reincidir no shadowing do _GRANDE_PORTE
+    # específico (o de _e_grande_porte, em buscar_produtos/detalhe_produto). Baixo elétrico
+    # e sintetizador são porte de guitarra/teclado comum — não devem exigir cotação humana,
+    # nem pelo nome de categoria nem pelo nome de produto real do catálogo.
+    assert "baixo" not in _GRANDE_PORTE_FRETE and "piano" not in _GRANDE_PORTE_FRETE, (
+        "termo solto demais em _GRANDE_PORTE_FRETE: casa baixo elétrico/sintetizador à toa")
+    for nao_grande in ("baixo elétrico", "Yamaha Bass 3X", "Korg Synth 1 Pro"):
+        r_ng = calcular_frete.invoke({"cep": "01310-100", "produto_ou_categoria": nao_grande})
+        assert "Instrumento de grande porte" not in r_ng, f"{nao_grande!r} virou grande porte: {r_ng}"
+        assert "PAC (Correios)" in r_ng, f"{nao_grande!r} devia dar cotação normal: {r_ng}"
 
 
 TESTS = [test_etl_views, test_policies_sem_perda, test_consultar_politica,

@@ -16,4 +16,18 @@ For systematic evaluation (44 scenarios × 3 rounds, reporting accuracy rate and
 | `02_preco_produto.md` | Single product pricing + upfront PIX price |
 | `03_info_loja.md` | Address, hours, and installment plans (store policies) |
 | `04_devolucao_pedido.md` | **Non-trivial:** return request: the agent verifies identity, consults policy, notices the remorse return window starts upon **receipt** (date not stored in system), asks the customer, and only then decides |
-| `05_fora_de_escopo.md` | Accessory inquiry (guitar strings) + completely out-of-scope query (cake recipe) |
+| `05_fora_de_escopo.md` | Acessório (cordas) + pergunta totalmente fora do escopo (receita) |
+
+## Pontos Estranhos / Anomalias Observadas
+
+1. **Apresentação repetida em turnos seguintes:** Em `01` e `02`, o assistente repete toda a apresentação formal ("Olá! Sou a melodIA...") no 2º turno da mesma conversa.
+2. **Confusão de datas e matemática em devolução (`04`):** O modelo calculou limite como "18/02" em vez de 18/03 (confundiu mês de entrega com mês de referência 25/03) e chamou 30/03 de "amanhã" (sendo hoje 25/03).
+3. **Promessa de ações sem ferramenta (`04`):** O agente disse *"vou preparar o pedido de devolução"* e perguntou *"quer que eu já abra o processo?"*, mas não existe tool para abertura ou preparação de devoluções.
+4. **Tool não chamada no turno 2 (`02`):** Não chamou `simular_pagamento` para pergunta de PIX do Takamine GD20 (R\$ 2.199,00), perdendo a oportunidade de oferecer combinação de formas de pagamento acima de R\$ 2.000.
+5. **Assunção geográfica sem dados (`05`):** Afirmou que *"tem várias bem por perto"* para lojas de acessórios, sem saber onde o cliente está.
+
+### Diagnóstico e Resolução
+
+- **Tool faltante:** Faltou implementar uma tool para **preparar/abrir pedidos de devolução** (atualmente o banco é somente leitura e não há endpoint para registrar a solicitação de devolução no sistema).
+- **Correções via System Prompt:** Os **itens 1, 3, 4 e 5** podem ser corrigidos diretamente via ajustes no `system_prompt` (reforçar para não repetir saudações em turnos subsequentes, proibir promessas de abertura de processos sem ferramentas delegando para canais de atendimento, direcionar chamada de `simular_pagamento` em perguntas sobre PIX/valores altos, e evitar assunções geográficas).
+

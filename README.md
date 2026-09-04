@@ -146,7 +146,8 @@ A search takes **one single call**: `buscar_produtos` returns the full list (up 
 | **python-dotenv** | Environment configuration via `.env` | Keeps `MODEL`, `base_url`, and reference date out of code and git, following 12-factor style (§10) |
 | **`assert` + `__main__`** | Test suite (`test_agent.py` without LLM, `test_live.py` against LM Studio) | Framework-free, zero test dependencies, runs everywhere (§11) |
 
-### 1. Agent Approach: ReAct with LangChain + LangGraph
+<details id="1-agent-approach-react-with-langchain--langgraph">
+<summary><b>1. Agent Approach: ReAct with LangChain + LangGraph</b></summary>
 
 `create_react_agent` (from `langgraph.prebuilt`): an execution loop where the model alternates between reasoning and invoking tools until reaching a final answer. The model communicates with LM Studio via `ChatOpenAI(base_url=...)`. Tools are standard Python functions decorated with `@tool` (`langchain-core`).
 
@@ -155,7 +156,10 @@ A search takes **one single call**: `buscar_produtos` returns the full list (up 
 - **Why not a single "answer" function:** The strength of this challenge lies in having the agent *decide* between structured data and policy text, a pattern natively handled by ReAct with rich tool descriptions.
 - **Why use prebuilt `create_react_agent` instead of assembling the graph manually:** The ReAct loop, tool binding, and conversation checkpointer come pre-tested in LangGraph.
 
-### 2. Model and Provider: LM Studio (Local Model)
+</details>
+
+<details id="2-model-and-provider-lm-studio-local-model">
+<summary><b>2. Model and Provider: LM Studio (Local Model)</b></summary>
 
 - **Zero cost and offline:** No API keys, no quotas, no billing.
 - **Data privacy:** The store policy manual explicitly references Brazil's LGPD privacy law. Customer support processes names, emails, and order history. Running the model locally prevents leaking sensitive customer PII to third-party APIs. A genuine compliance argument, not merely a cost consideration.
@@ -163,7 +167,10 @@ A search takes **one single call**: `buscar_produtos` returns the full list (up 
 - **Model selection:** The primary axis is tool-calling reliability vs. inference latency. Smaller models respond in seconds but make occasional tool errors. These edge cases observed in real testing were codified into explicit prompt rules. Larger models make fewer tool errors at the expense of latency. [`eval_report.md`](eval_report.md) records which model produced each benchmark result, with pass rate and latency per case, enabling comparisons grounded in data rather than impression. Frontier models via API would solve latency and reliability simultaneously, at the cost of transmitting PII externally.
 - **The operational tension:** The core business problem stated in the challenge is *inquiry volume*: "the team is overwhelmed by repetitive questions". The numbers are measured, not guessed ([`eval_report.md`](eval_report.md), 87 runs): **median of 32s per case**, peaking at 177s in the worst-case scenario (`conversa_longa_nao_perde_a_ferramenta`, seven turns with tool calls in almost all). These apply to the model evaluated in that report; switching models shifts both numbers, which is why the versioned report records the exact model used. Without streaming or queues, this **demonstrates** the agent's logic, but does not address volume on a single local GPU: an agent waiting half a minute per response is not alleviating support bottlenecks. This prototype optimizes for cost, privacy, and offline reproducibility; a production deployment addressing real volume would use a batched serving layer (or API), streaming responses, and an asynchronous queue. The agent here is the component validated first; the serving layer is the next step, not an afterthought.
 
-### 3. Store Policies: Conversion via `pymupdf4llm` + Section Retrieval Tool (Without Embeddings)
+</details>
+
+<details id="3-store-policies-conversion-via-pymupdf4llm--section-retrieval-tool-without-embeddings">
+<summary><b>3. Store Policies: Conversion via <code>pymupdf4llm</code> + Section Retrieval Tool (Without Embeddings)</b></summary>
 
 `convert_policies.py` uses `pymupdf4llm` to extract the policy PDF into `policies_raw.md` (reproducible, versioned). This output underwent light curation into `policies.md` (cleaned headings without `**bold**`, removed running headers/footers, normalized tables). The tool `consultar_politica` scores the 10 sections using keywords and titles, returning the most relevant segments.
 
@@ -181,7 +188,10 @@ To balance latency, mathematical precision, and operational maintainability:
 7. **Data Privacy & Protection (Section 9):** LGPD compliance (Brazilian General Data Protection Law, Law No. 13,709/2018) in infrastructure and behavior: local model (LM Studio) without external data transmission; order data protected by strict email verification; and `consultar_politica` covering data deletion rights and processing purposes.
 8. **Final Provisions and Omitted Cases (Section 10):** Guardrail against rule hallucinations: if a customer query is not explicitly covered in the manual, the agent is prohibited from inventing plausible compromises (fines, compensations, custom deadlines) and instructed to honestly state that it will check with management.
 
-### 4. Data Processing: ETL to SQLite with Views
+</details>
+
+<details id="4-data-processing-etl-to-sqlite-with-views">
+<summary><b>4. Data Processing: ETL to SQLite with Views</b></summary>
 
 `build_db.py` ingests the 6 CSV files into `emporio.db` with normalized data types and creates two views encapsulating core business rules:
 
@@ -225,7 +235,10 @@ Two boundaries are intentionally maintained: **raw files in `data/` are never to
 
 **Why SQLite over in-memory DataFrames:** SQLite makes domain modeling explicit (tables + views document business logic), offers clean joins and aggregations, and shares the same database file used for conversation persistence. The LLM never generates SQL; tools run fixed queries with bound parameters.
 
-### 5. Concept of "Today": Configurable `DATA_REFERENCE_DATE`
+</details>
+
+<details id="5-concept-of-today-configurable-data_reference_date">
+<summary><b>5. Concept of "Today": Configurable <code>DATA_REFERENCE_DATE</code></b></summary>
 
 All 20 orders in the dataset date from October 2025 to March 2026. Against the real-world calendar, **every order would be past all policy deadlines** (7 days remorse, 30 days defect), rendering the benchmark query ("I regret my purchase, can I return it?") permanently negative.
 
@@ -237,7 +250,10 @@ Now, `status_pedido` clearly labels the counter as "N days **since purchase**" a
 
 **Why not `date.today()` as default:** Falling back to the system clock when the environment variable is missing would silently turn every return inquiry into "past deadline" on any machine where `.env` was omitted. A fixed default fails predictably; a dynamic clock fails invisibly.
 
-### 6. Identity Verification: LGPD / Privacy Conscious
+</details>
+
+<details id="6-identity-verification-lgpd--privacy-conscious">
+<summary><b>6. Identity Verification: LGPD / Privacy Conscious</b></summary>
 
 Customer orders expose PII (name, email, items, purchase price, delivery estimate, tracking code). `status_pedido` only releases data upon validating **order number + exact registered email** (`_identidade_confere` in `tools.py`, normalizing case and accents). Names are not accepted, not even the customer's full legal name.
 
@@ -245,7 +261,10 @@ Customer orders expose PII (name, email, items, purchase price, delivery estimat
 
 **The deliberate trade-off:** More secure, slightly more demanding. Customers providing only their name are declined and asked for their registered purchase email, following standard e-commerce practice. `test_identidade_nao_burlavel` iterates across all 20 orders: valid email unlocks, name alone is rejected, and an email with a single modified character is blocked.
 
-### 7. Conversation History: LangGraph SQLite Checkpointer & Context Trimming
+</details>
+
+<details id="7-conversation-history-langgraph-sqlite-checkpointer--context-trimming">
+<summary><b>7. Conversation History: LangGraph SQLite Checkpointer & Context Trimming</b></summary>
 
 `SqliteSaver` operates over the same `emporio.db`, indexed by `thread_id`. Conversations survive application restarts: reopening with the same `thread_id` (editable in Streamlit sidebar) restores the entire session.
 
@@ -255,11 +274,17 @@ The critical requirement for trimming is `start_on="human"`: slicing mid-turn ac
 
 **When trimming begins depends on model verbosity.** In a 28-turn validation via Streamlit with a verbose model, history expanded at ~340 tokens per turn: reaching 5,100 tokens at turn 15 and 9,600 tokens at turn 28 across 94 messages with 14 tool invocations. Under that pace, an 8,000 ceiling begins trimming around turn 23. Testing `_podar` against live transcripts with tighter ceilings (4,000 and 1,000) reduced message counts from 71 to 35 and 11 messages respectively, strictly under the ceiling and **without orphaned tool messages**. Lesson learned: turn capacity is a property of the model's verbosity, making configurable ceilings and orphan validation essential.
 
-### 8. User Interface: Streamlit
+</details>
+
+<details id="8-user-interface-streamlit">
+<summary><b>8. User Interface: Streamlit</b></summary>
 
 A functional web chat built in minimal code, suitable for demonstrations and recording test dialogues. The `thread_id` can be adjusted in the sidebar to prove session persistence. A terminal REPL (`python agent.py`) is also included for fast command-line testing.
 
-### 9. Persona and Prompt: "melodIA"
+</details>
+
+<details id="9-persona-and-prompt-melodia">
+<summary><b>9. Persona and Prompt: "melodIA"</b></summary>
 
 The assistant persona is named **melodIA** (*melodia* [melody] + *IA* [AI]). Friendly and welcoming, designed to make shoppers comfortable.
 
@@ -269,18 +294,27 @@ The system prompt (`prompts.py`) enforces strict **guardrails**: never guess pri
 
 Policy rule principle: Lives strictly in policy text, never hardcoded in code or prompts.
 
-### 10. Configuration: `.env` via `python-dotenv`
+</details>
+
+<details id="10-configuration-env-via-python-dotenv">
+<summary><b>10. Configuration: <code>.env</code> via <code>python-dotenv</code></b></summary>
 
 `config.py` loads environment variables: `OPENAI_BASE_URL`, `MODEL`, `DATA_REFERENCE_DATE`. Keeps configuration out of git repositories and decoupled from code, maintaining full model and provider agnosticism.
 
-### 11. Testing: `assert` + `__main__`, Zero Framework Overhead
+</details>
+
+<details id="11-testing-assert--__main__-zero-framework-overhead">
+<summary><b>11. Testing: <code>assert</code> + <code>__main__</code>, Zero Framework Overhead</b></summary>
 
 Two test tiers, both relying on native `assert` and standard `main()` blocks without pytest:
 
 - **`test_agent.py`** (13 test functions, no LLM): deterministic logic covering ETL views and brand corrections, keyword routing for the 10 policy sections (including Section 4.4 exceptions like mouthpieces and custom setups), data tools, national shipping calculator (`calcular_frete`), identity validation across all 20 orders, installment arithmetic in `simular_pagamento` (including constant validation against manual text), and context window trimming. Includes `test_policies_sem_perda`, verifying that policy curation only changed formatting: every number, value, and email address from `policies_raw.md` is preserved. Runs in seconds on any environment.
 - **`test_live.py`** (44 test cases × k rounds against LM Studio): end-to-end evaluation where each scenario asserts customer dialogue turns, expected tool invocations, and mandatory/forbidden response substrings. Covers discontinued vs. out-of-stock items (§7.3), customized items ineligible for return (§4.4), refusal of split payments under R$ 2,000 (§3.1), Campo Grande free shipping threshold at exactly R$ 500 (§5.1), resistance to prompt injections demanding full customer email dumps, and the 90-day statutory warranty (§8.1) calculated from receipt rather than purchase. Generates [`eval_report.md`](eval_report.md) with pass rates and latencies (median and worst-case) per scenario.
 
-### 12. Customer Identification: Invitation, Not a Gate
+</details>
+
+<details id="12-customer-identification-invitation-not-a-gate">
+<summary><b>12. Customer Identification: Invitation, Not a Gate</b></summary>
 
 The store policy manual (§7.2) describes standard support protocol beginning with *"greet the customer by name, **if available**"*. `identificar_cliente(email)` fulfills this: returning first name, city, and purchase history existence.
 
@@ -289,7 +323,10 @@ The store policy manual (§7.2) describes standard support protocol beginning wi
 - **Enabled integrations:** City data feeds shipping calculations (24 of 50 customers reside in Campo Grande where shipping is immediately computable), and in-transit orders prompt proactive delivery tracking offers.
 - **Clear security boundary:** Identification is not authentication. The tool may reference the *order ID* of an in-transit order, but reveals **no order contents**: items, totals, and tracking codes remain exclusive to `status_pedido`, which requires order ID + matching email.
 
-### 13. Installment and Shipping: The Only Policy Rules Implemented in Code
+</details>
+
+<details id="13-installment-and-shipping-the-only-policy-rules-implemented-in-code">
+<summary><b>13. Installment and Shipping: The Only Policy Rules Implemented in Code</b></summary>
 
 `simular_pagamento` computes installment capacity, per-installment values, PIX cash pricing, and local metropolitan shipping. This departs from project conventions (policy rules belong in text, not code) for a deliberate reason: **it is arithmetic, and arithmetic is where local LLMs hallucinate**. "R$ 549 in 12x" produces installments of R$ 45.75 (below the R$ 100 tier floor), yet the agent previously agreed when calculating mentally from §3.1 text. The true maximum is 6x of R$ 91.50.
 
@@ -320,6 +357,10 @@ The final provision of §5.2 (oversized instruments may require custom freight q
 
 ---
 
+</details>
+
+---
+
 ## Known Limitations
 
 - **Tool calling reliability depends on local model capacity.** Weaker models may answer price/inventory without calling tools or fail to refuse out-of-scope queries.
@@ -328,6 +369,7 @@ The final provision of §5.2 (oversized instruments may require custom freight q
 - **Inference latency vs. inquiry volume.** Median latency of 32s per case, up to 177s worst-case, across 87 non-streamed test runs ([`eval_report.md`](eval_report.md)). Smaller models respond in seconds but compromise tool accuracy.
 - **Agent has no clock awareness.** Context injects the reference *date*, never the *time*. Policy §7.1 requests stating reopening hours when contacted after hours: the agent can state operating hours (§2), but does not know if the store is currently open.
 - **Complaints are not stored.** Policy §7.3 specifies "listen with empathy, register, and forward to management". The agent listens and forwards, but persists nothing: database access is read-only and no ticketing table exists. The 24-business-hour SLA is communicated accurately.
+- **No tool to prepare or submit return orders.** While the agent verifies remorse eligibility and policies, there is currently no write tool (`preparar_devolucao`) to register or initiate returns in the system. The agent must guide customers to support channels rather than promising direct system execution.
 - **No deterministic scope guardrail.** Out-of-scope refusal relies entirely on prompt instructions.
 - **Identity verification is not full authentication.** Enforces exact registered email matching, but lacks login tokens, OTP verification, and rate limiting. Adequate for a prototype, not production.
 - **Product search is lexical** (logical AND keyword matching across title and specs). While `tools._SPECS_PT` maps Portuguese terms to English JSON keys (`tampo`→`top`, `teclas`→`keys`), catalog values mix languages ("Mogno" on Kala, "Mahogany" on Gibson). Semantic vector search would be required to unify multilingual values and match broad queries like "beginner guitar".
@@ -348,6 +390,7 @@ The final provision of §5.2 (oversized instruments may require custom freight q
 - **Real user authentication** for order lookups (SMS/Email/WhatsApp OTP).
 - **Semantic product search** (catalog embeddings) to support natural language queries.
 - **Token streaming** in the UI.
+- **Tool for preparing return requests (`preparar_devolucao`)** to formalize return flows in backend.
 - **Automatic text-ReAct fallback** when native tool calling fails.
 
 ---

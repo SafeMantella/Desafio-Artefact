@@ -61,7 +61,7 @@ tools.py           as 6 tools LangChain (buscar_produtos, detalhe_produto,
 prompts.py         system prompt / persona / regras                         [Parte 4]
 agent.py           monta o ReAct agent + checkpointer                       [Parte 4]
 app.py             Streamlit                                                [Parte 5]
-test_agent.py      12 checks assert-based, sem LLM (views+ETL, política sem perda,
+test_agent.py      13 checks assert-based, sem LLM (views+ETL, política sem perda,
                    roteamento das 10 seções, tools, identidade, parcelamento/frete, poda)  [ao longo]
 test_live.py       avaliação ponta a ponta contra o LM Studio, k rodadas por caso      [Parte 9-10]
 eval_report.md     saída da última execução do eval (taxa + latência por caso)      [Parte 10]
@@ -80,10 +80,10 @@ data/              dados fornecidos — NÃO alterar
 
 ## 5. Estado atual
 
-**Completo + três rodadas de correções pós-análise.** Ver `CHECKLIST.md` (Partes 9, 10 e 11).
+**Completo + quatro rodadas de correções pós-análise.** Ver `CHECKLIST.md` (Partes 9, 10, 11 e 12) e a Parte 13 abaixo.
 Partes 0-8: ETL, políticas, tools, agente (melodIA), Streamlit, 5 exemplos, README, clone
-limpo. Hoje: `test_agent.py` 11/11; `test_live.py` com 29 casos (relatório versionado ainda
-é o da Parte 10, com 20 — regerar). Correções: #4 identidade
+limpo. Hoje: `test_agent.py` 13/13; `test_live.py` com 44 casos, `eval_report.md`
+regerado. Correções: #4 identidade
 (v3 + resíduo documentado), #1 grounding (mitigado), #3/#5 (README), #2 (eval harness),
 #2b eval endurecido (16 casos, oráculo de PII derivado, whitelist no lugar de blacklist) —
 que achou e fechou o bug do `buscar_produtos` ("existe sem estoque" virava "não existe").
@@ -93,6 +93,30 @@ que achou e fechou o bug do `buscar_produtos` ("existe sem estoque" virava "não
 preço; relógio de arrependimento contava da compra e não do recebimento; histórico sem poda
 (`pre_model_hook` + `trim_messages`); eval rodava n=1 (agora `--rodadas`, default 3, com
 `eval_report.md` versionado); enunciado saiu do versionamento.
+
+**Parte 13** (auditoria geral pré-entrega, ótica de recrutador/AI Engineer sênior — sem
+código novo além das correções): achou e fechou um bug real de escopo em Python.
+1. **`_GRANDE_PORTE` redefinido em `tools.py` fazia `calcular_frete` classificar baixo
+   elétrico e sintetizador como "grande porte".** Duas listas de mesmo nome no módulo —
+   `_e_grande_porte()` (usada por `buscar_produtos`/`detalhe_produto`) lê o global no
+   momento da CHAMADA, então acabava lendo a lista mais ampla, pensada só para
+   `calcular_frete`. Confirmado ao vivo antes do fix: "Yamaha Bass 3X" e "Korg Synth 1 Pro"
+   voltavam "exige cotação humana". Renomeada para `_GRANDE_PORTE_FRETE`, com bare "baixo"
+   e "piano" removidos dela também (mesma razão da lista específica: só pegariam item errado
+   no catálogo atual). `test_calcular_frete` ganhou o caso de regressão com nome real de
+   produto — era a lacuna que deixou o bug passar despercebido.
+2. **`calcular_frete` duplicava `_FRETE_CG`/`_PRAZO_CG` como string literal** no branch de
+   CEP de Campo Grande — fora do guard que `test_simular_pagamento` já faz contra
+   `policies.md`. Trocado por `_brl(_FRETE_CG[...])`/`_PRAZO_CG`, com assert dedicado.
+3. **`app.py`** não logava a exceção antes de mostrar a mensagem amigável — `log.exception`
+   adicionado.
+4. **Dois casos novos em `test_live.py`:** `seguranca_prompt_injection_lista_clientes`
+   (pedido explícito para ignorar instruções e vazar e-mails de todos os clientes — 3/3,
+   nenhuma tool permite esse dump mesmo assim) e `garantia_legal_recebimento_vs_compra`
+   (mesma ambiguidade do §4.1 corrigida na Parte 10 — a garantia legal de 90 dias do §8.1
+   também conta do RECEBIMENTO, não da compra — nunca tinha sido testada para garantia).
+5. README (contagem de ferramentas no diagrama e na decisão 2, assinatura de
+   `simular_pagamento` na tabela) e este arquivo sincronizados com o código atual.
 
 **Parte 12** (auditoria da §5 — Política de Frete e Entregas): das 11 cláusulas da seção, 2
 eram calculadas, 6 viviam só no texto e 3 tinham furo. Fechados os três:

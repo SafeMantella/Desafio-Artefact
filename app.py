@@ -7,7 +7,7 @@ import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
 
 from agent import build_agent, responder
-from config import MODEL, OPENAI_BASE_URL
+from config import MODEL, OPENAI_BASE_URL, log
 
 st.set_page_config(page_title="melodIA — Empório da Música", page_icon="🎸")
 
@@ -86,6 +86,7 @@ if pergunta := st.chat_input("Como podemos ajudar?"):
         try:
             resposta = responder(agente, pergunta, st.session_state.thread_id)
         except Exception as e:  # LM Studio caiu no meio, modelo sem tool use, etc.
+            log.exception("falha ao responder thread=%s", st.session_state.thread_id)
             resposta = f"Ops, tive um problema para responder agora ({type(e).__name__}). Tente de novo."
         st.write(_md(resposta))
     st.session_state.messages.append(("assistant", resposta))

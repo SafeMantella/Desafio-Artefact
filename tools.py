@@ -552,9 +552,22 @@ def simular_pagamento(preco_de_tabela: float, ja_esta_em_promocao: bool = False,
     return "\n".join(linhas)
 
 
-_GRANDE_PORTE = (
-    "bateria acustica", "bateria", "piano digital", "piano", "contrabaixo", "baixo"
-)
+# ponytail: nome distinto de `_GRANDE_PORTE` (linha ~221) de propósito — aquele é
+# específico por design (baixo elétrico e sintetizador não contam); este é mais amplo
+# porque calcular_frete recebe texto livre do cliente ("bateria", "contrabaixo") sem o
+# contexto de nome de produto exato. Reusar o mesmo identificador causava shadowing: o
+# Python resolve o global no momento da CHAMADA, então `_e_grande_porte()` (que só deveria
+# ler a lista específica) acabava lendo esta lista ampla — "Yamaha Bass 3X" e "Korg Synth 1
+# Pro" viravam "grande porte" incorretamente em calcular_frete.
+#
+# "bateria" sozinho é seguro: os 3 únicos produtos da categoria "Baterias e Percussão" são
+# todos "Bateria Acústica ..." (conferido no catálogo). Já "baixo" e "piano" soltos NÃO
+# entram — a categoria "Baixos" só tem baixo ELÉTRICO (porte de guitarra) e a categoria
+# "Teclados e Pianos" só tem sintetizador; "piano" solto também casaria por substring com o
+# nome da própria categoria ("Teclados e Pianos"), marcando sintetizador à toa.
+# "contrabaixo" solto fica: em PT-BR é sempre o instrumento acústico grande (contrabaixo
+# ≠ baixo elétrico), coerente com o exemplo do docstring da ferramenta.
+_GRANDE_PORTE_FRETE = ("bateria acustica", "bateria", "piano digital", "contrabaixo")
 
 
 # Dimensões (C x L x A em cm) e pesos (kg) padronizados de embalagem por categoria (§5.2).
@@ -608,7 +621,7 @@ def calcular_frete(cep: str, produto_ou_categoria: str = "",
                 alvo = f"{alvo} {_norm(row['categoria'])}"
 
     # §5.2: Instrumentos de grande porte exigem cotação individual com atendente humano
-    if any(p in alvo for p in _GRANDE_PORTE) or peso_kg > 25 or max(comprimento_cm, largura_cm, altura_cm) > 150:
+    if any(p in alvo for p in _GRANDE_PORTE_FRETE) or peso_kg > 25 or max(comprimento_cm, largura_cm, altura_cm) > 150:
         return (
             "Instrumento de grande porte (baterias acústicas, pianos digitais, contrabaixos): "
             "exige frete especial com cotação individual e não pode ser calculado automaticamente.\n"
@@ -617,12 +630,16 @@ def calcular_frete(cep: str, produto_ou_categoria: str = "",
             "- E-mail: contato@emporiodamusica.com.br"
         )
 
-    # Entregas na região metropolitana de Campo Grande (MS)
+    # Entregas na região metropolitana de Campo Grande (MS). Valores vêm de _FRETE_CG /
+    # _PRAZO_CG (não literais): são as mesmas constantes que simular_pagamento usa e que
+    # test_simular_pagamento confere contra o texto de policies.md — sem isso, esta string
+    # divergiria em silêncio se o manual mudasse o valor do frete ou do prazo.
     if cep_digitos.startswith(("790", "7910", "7911", "7912", "7913", "7914", "7915")):
+        gratis_acima, taxa = _FRETE_CG
         return (
             f"CEP {cep}: Destino na Região Metropolitana de Campo Grande (§5.1).\n"
-            "- Entrega por motoboy próprio em 1 a 3 dias úteis.\n"
-            "- Taxa fixa de R$ 35,00 (grátis para compras acima de R$ 500,00).\n"
+            f"- Entrega por motoboy próprio em {_PRAZO_CG}.\n"
+            f"- Taxa fixa de {_brl(taxa)} (grátis para compras acima de {_brl(gratis_acima)}).\n"
             "- O cliente será contactado por telefone antes da entrega."
         )
 

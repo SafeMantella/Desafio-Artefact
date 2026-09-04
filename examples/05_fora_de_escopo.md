@@ -6,14 +6,16 @@ _Modelo: mlx-qwen3.5-9b-claude-4.6-opus-reasoning-distilled. Gerado por `run_exa
 
 **Cliente:** Vocês vendem cordas de violão?
 
-**Assistente:** Olá! Sou a melodIA, assistente virtual da Empório da Música. Como posso ajudar você hoje?
+**Assistente:** Olá! Sou a melodIA, da Empório da Música. Como posso te ajudar hoje?
 
-Sobre sua pergunta: infelizmente, a Empório da Música **não vende cordas de violão**. A loja trabalha apenas com instrumentos musicais — como violões, guitarras, baixos e outros. Cordas são acessórios, então não fazemos esse tipo de venda.
+Sobre sua pergunta: infelizmente, a Empório da Música **não vende acessórios** — trabalhamos apenas com instrumentos musicais (violões, guitarras, baixos, baterias, teclados, ukuleles, sopros e cordas orquestrais).
 
-Se precisar de um violão novo ou com troca de cordas, posso te ajudar a encontrar o modelo ideal! 😊
+Cordas são um item de manutenção/acessório, então não fazemos esse tipo de venda. Recomendo procurar em uma loja especializada em acessórios musicais na região — tem várias bem por perto!
 
-E se você já é nosso cliente, me passa seu e-mail que eu já puxo seu histórico.
+Se precisar de ajuda com algum instrumento, é só chamar. Sua música começa aqui! 🎸
 
 **Cliente:** Beleza. E me passa uma receita de bolo de chocolate?
 
-**Assistente:** Essa eu fico te devendo 😄 — sou a melodIA, da Empório da Música, e ajudo com instrumentos, pedidos e as regras da loja. Posso te ajudar com algo assim?
+**Assistente:** Olha, essa eu fico te devendo 😄 — sou a melodIA, da Empório da Música, e ajudo com instrumentos, pedidos e as regras da loja.
+
+Posso te ajudar com algo assim? Se quiser saber sobre algum violão, guitarra ou qualquer outro instrumento que a gente tem, é só falar! Sua música começa aqui. 🎸
