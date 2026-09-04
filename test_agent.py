@@ -92,6 +92,10 @@ def test_consultar_politica():
     assert call("como excluo meus dados pessoais?").startswith("## 9."), "LGPD -> seção 9"
     assert call("o que dizem as disposições finais?").startswith("## 10."), "disposições -> seção 10"
 
+    # §4.4 (itens não elegíveis para troca: boquilha e personalização/setup)
+    assert call("posso trocar a boquilha do saxofone?").startswith("## 4."), "boquilha -> seção 4"
+    assert call("fiz regulagem especial no violão, posso trocar?").startswith("## 4."), "setup/regulagem -> seção 4"
+
     # §5.2 (avaria/extravio no transporte): antes desta rodada TODO esse vocabulário caía
     # no fallback "não identifiquei o tópico" e o modelo reformulava para "defeito" —
     # respondendo com a §4 (troca em 30 dias) uma situação que a §5.2 resolve de outro

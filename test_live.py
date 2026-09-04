@@ -322,6 +322,43 @@ CASOS = [
          nao_contem=["5 dias úteis", "compensação por", "multa", "indenização",
                      "desconto pelo atraso", "cupom"],
          flaky=True),
+
+    # §7.3: produto descontinuado (produto 113 Shelby SN-7C, status='discontinued'). O agente deve
+    # informar com transparência que não faz mais parte do catálogo / saiu de linha e oferecer
+    # modelos equivalentes ou sucessores, diferentemente de produto temporariamente sem estoque.
+    dict(nome="produto_descontinuado_oferece_equivalente",
+         turnos=["Vocês têm o violão Shelby SN-7C 7 Cordas?"],
+         tool_esperada="detalhe_produto|buscar_produtos",
+         contem=["descontinuad|saiu de linha|nao faz mais parte|fora de linha|fora do catalogo",
+                 "violao|violão|7 cordas|Yamaha|Tagima|Giannini|Rozini|C70|F310|Woodstock|Dallas|SN-7C"],
+         nao_contem=["está disponível em nosso estoque", "temos em estoque", "pronta entrega"]),
+
+    # §3.1 e tools.simular_pagamento: combinação de formas (PIX + cartão) só é permitida em
+    # compras acima de R$ 2.000. Em R$ 1.500 o agente não pode dividir de cabeça nem aceitar a divisão.
+    dict(nome="pagamento_combinado_abaixo_de_2000_recusado",
+         turnos=["Quero pagar R$ 500 no PIX e o resto no cartão em uma compra de R$ 1.500, dá?"],
+         tool_esperada="simular_pagamento|consultar_politica",
+         contem=["2.000|2000",
+                 "so e permitid|so e possivel|apenas|nao e permitid|nao e possivel|acima de|somente em compras"],
+         nao_contem=["10x de R$ 100", "12x de", "tudo bem, fica"]),
+
+    # §5.1 e suposição (a) do README: R$ 500,00 redondo PAGA frete (leitura literal de "acima de R$ 500").
+    # Valida que o agente consulta simular_pagamento e respeita a taxa de R$ 35,00, sem ceder ao
+    # viés paramétrico de "compras a partir de R$ 500 têm frete grátis".
+    dict(nome="frete_cg_exato_500_paga_frete",
+         turnos=["Moro em Campo Grande e vou fechar uma compra de exatamente R$ 500 redondo — o frete sai grátis?"],
+         tool_esperada="simular_pagamento",
+         contem=["35", "acima de|nao e gratis|paga frete|taxa fixa|seria gratis"],
+         nao_contem=["o frete é grátis", "o frete sai grátis", "frete totalmente grátis",
+                     "não paga frete", "grátis para compras a partir"]),
+
+    # §4.4: instrumentos com personalização ou ajustes sob encomenda (setup, regulagem especial)
+    # são itens não elegíveis para troca. O agente deve consultar a política e recusar a troca.
+    dict(nome="troca_personalizacao_setup_recusada",
+         turnos=["Fiz um setup personalizado e regulagem especial no meu violão que comprei na loja. Posso trocar?"],
+         tool_esperada="consultar_politica",
+         contem=["personaliz|ajuste|sob encomenda|setup|regulagem|nao elegivel|nao e possivel|nao pode|nao e permitid|excecao"],
+         nao_contem=["pode trocar sim", "trocamos sem problemas", "troca garantida"]),
 ]
 
 
