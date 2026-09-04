@@ -59,7 +59,7 @@ tools.py           as 4 tools LangChain (buscar_produtos, detalhe_produto,
 prompts.py         system prompt / persona / regras                         [Parte 4]
 agent.py           monta o ReAct agent + checkpointer                       [Parte 4]
 app.py             Streamlit                                                [Parte 5]
-test_agent.py      7 checks assert-based, sem LLM (views, política, tools, identidade)  [ao longo]
+test_agent.py      8 checks assert-based, sem LLM (views, política, tools, identidade, poda)  [ao longo]
 test_live.py       avaliação ponta a ponta contra o LM Studio, k rodadas por caso      [Parte 9-10]
 eval_report.md     saída da última execução do eval (taxa + latência por caso)      [Parte 10]
 examples/          3-5 conversas de exemplo                                 [Parte 6]

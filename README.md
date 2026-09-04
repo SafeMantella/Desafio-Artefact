@@ -15,12 +15,18 @@ pagamento, frete, garantia). Perguntas fora do escopo da loja são recusadas com
 - *"Quais violões disponíveis até R$ 1000?"* → busca no catálogo, só o que está em estoque
 - *"Quanto custa o Takamine GD20?"* → preço de tabela + preço à vista no PIX
 - *"Qual o endereço e o horário da loja?"* → consulta o manual de políticas
-- *"Me arrependi da compra do pedido 8, consigo devolver?"* → confirma a identidade, olha há
-  quantos dias foi a compra e aplica a política de arrependimento (7 dias)
+- *"Me arrependi da compra do pedido 7, consigo devolver?"* → confirma a identidade, lê a
+  política, percebe que o prazo de arrependimento conta do **recebimento** (dado que o sistema
+  não tem) e pergunta ao cliente quando ele recebeu antes de responder
+- *"Quais ukuleles até R$ 500?"* → a faixa vale sobre o preço **efetivo**: entra o que está a
+  R$ 439,20 com promoção, mesmo com tabela em R$ 549
+- *"Vocês têm saxofone?"* → a loja trabalha com sopros, mas o catálogo está sem itens da
+  categoria — e o agente diz isso, em vez de listar outra coisa
 - *"Vocês vendem cordas de violão?"* → explica que a loja não trabalha com acessórios
 - *"Me passa uma receita de bolo?"* → recusa educadamente e volta ao contexto da loja
 
-Três a cinco conversas completas estão em [`examples/`](examples/).
+Cinco conversas completas estão em [`examples/`](examples/), e a avaliação automática de 20
+cenários (3 rodadas cada) em [`eval_report.md`](eval_report.md).
 
 ---
 
@@ -30,9 +36,12 @@ Três a cinco conversas completas estão em [`examples/`](examples/).
 
 - **Python 3.11+**
 - **[LM Studio](https://lmstudio.ai/)** com um modelo que suporte *tool use* / function calling.
-  Desenvolvido e testado com **Qwen3.5-9B** (`qwen/qwen3.5-9b`); a família Qwen2.5-Instruct
-  (7B+) e Llama-3.1-8B-Instruct também funcionam. Modelos maiores respondem melhor em
-  português e chamam as ferramentas de forma mais confiável.
+  A avaliação versionada em [`eval_report.md`](eval_report.md) é com **Qwen3.8-27B**
+  (`qwen/qwen3.8-27b`): 20/20 casos em 3 rodadas cada. O projeto foi construído com
+  **Qwen3.5-9B** (`qwen/qwen3.5-9b`), que também roda — mais rápido e menos confiável no
+  *tool calling*; a família Qwen2.5-Instruct (7B+) e Llama-3.1-8B-Instruct servem como
+  alternativas mais leves. Modelos maiores respondem melhor em português e chamam as
+  ferramentas de forma mais confiável, ao custo de latência (ver decisão 2).
   Sugestões no LM Studio: contexto de 16k+ e GPU offload no máximo.
 
 ### Passos
@@ -70,21 +79,24 @@ Variáveis de ambiente (`.env`):
 ### Testes
 
 ```bash
-python test_agent.py    # 7 checks determinísticos, sem LLM — rápido
-python test_live.py     # 16 casos ponta a ponta contra o LM Studio — lento (~25 min)
+python test_agent.py             # 8 checks determinísticos, sem LLM — segundos
+python test_live.py              # 20 casos × 3 rodadas contra o LM Studio — horas
+python test_live.py --rodadas 1  # 1 rodada só, para iterar
 python test_live.py identidade   # só os casos cujo nome contém "identidade"
 ```
 
 - **`test_agent.py`** cobre a lógica não-trivial sem chamar o modelo: views do ETL (preço
   promocional, PIX não-cumulativo, disponibilidade), roteamento do `consultar_politica`, as
-  três tools de dados (incl. os ataques à verificação de identidade) e a montagem do grafo.
+  três tools de dados (incl. os ataques à verificação de identidade), a poda de histórico e a
+  montagem do grafo.
 - **`test_live.py`** é a avaliação do agente: cada caso declara as mensagens do cliente, a(s)
   ferramenta(s) que deviam ser chamadas e o que a resposta final deve / não deve conter (preço
   certo, sem promoção inventada, sem PII vazada em recusa de identidade, sem política
-  inventada, persona, recusa de fora-de-escopo, etc.). Depende do LLM, então um caso pode
-  oscilar entre execuções — é o custo de avaliar um modelo local não determinístico. Casos
-  com oscilação conhecida são marcados `flaky=True`: aparecem no relatório, mas não derrubam
-  o resultado.
+  inventada, persona, recusa de fora-de-escopo, etc.). Como o agente é não determinístico,
+  **cada caso roda 3 vezes** e o que vale é a taxa (3/3, 2/3…) — passar uma vez não distingue
+  acerto de sorte. Casos com oscilação conhecida são marcados `flaky=True`: entram no relatório
+  com a taxa real, mas não derrubam o resultado. Cada execução escreve
+  [`eval_report.md`](eval_report.md) com taxa e latência por caso.
 
 ---
 
@@ -116,9 +128,9 @@ de política devolve a(s) seção(ões) relevante(s) do manual em markdown.
 
 | Ferramenta | Quando o agente usa | Retorno |
 |---|---|---|
-| `buscar_produtos(termo, categoria, preco_min, preco_max, apenas_disponiveis)` | catálogo, opções por tipo/preço, disponibilidade | lista com preço de tabela, preço promocional e preço no PIX |
+| `buscar_produtos(termo, categoria, preco_min, preco_max, apenas_disponiveis)` | catálogo, opções por tipo/preço, disponibilidade | lista com preço de tabela, preço promocional e preço no PIX. A faixa de preço filtra o **preço efetivo** (o promocional quando há promoção) |
 | `detalhe_produto(nome_ou_id)` | preço/specs/promoção de **um** instrumento | ficha completa; desambigua se o nome casar vários |
-| `status_pedido(order_id, identificador)` | andamento de um pedido | status, itens, valor, previsão, rastreio, dias desde a compra — **só após conferir identidade** |
+| `status_pedido(order_id, identificador)` | andamento de um pedido | status, itens, valor, previsão, rastreio, dias **desde a compra** (e o aviso de que não há data de recebimento) — **só após conferir identidade** |
 | `consultar_politica(topico)` | horário, endereço, pagamento, troca/devolução, frete, garantia, LGPD, escopo | seção(ões) do `policies.md` |
 
 ---
@@ -139,7 +151,7 @@ de política devolve a(s) seção(ões) relevante(s) do manual em markdown.
 | **LangGraph** — `create_react_agent`, `SqliteSaver` | laço do agente ReAct + persistência do histórico | laço de raciocínio, *binding* de ferramentas e checkpoint prontos e testados (§1, §7) |
 | **LangChain** — `langchain-core`, `langchain-openai` | decorator `@tool`, tipos de mensagem, `ChatOpenAI` | `ChatOpenAI` é o adaptador de modelo que o `create_react_agent` espera; com `base_url` aponta direto pro LM Studio (§1) |
 | **LM Studio** | serve o modelo local via API compatível com OpenAI | custo zero, offline, e a PII do cliente não sai da máquina — LGPD (§2) |
-| **Qwen3.5-9B** (trocável) | o modelo de linguagem | melhor *tool calling* da faixa aberta pequena + PT-BR aceitável (§2) |
+| **Qwen3.8-27B** (trocável; 3.5-9B como alternativa leve) | o modelo de linguagem | melhor *tool calling* da faixa aberta local + PT-BR bom; o `.env` troca o modelo sem tocar em código (§2) |
 | **SQLite** (`sqlite3`, stdlib) | catálogo/pedidos consultáveis + histórico de conversa | modelagem explícita em *views*, *joins* limpos, um arquivo só, zero dependência (§4, §7) |
 | **pandas** | ETL dos CSVs (`read_csv` → `to_sql`) | 2 linhas por CSV e inferência de tipo nas colunas mistas int/decimal; usado só no `build_db.py` (§4) |
 | **pymupdf4llm** (+ `pymupdf`) | PDF de políticas → markdown | conversão reproduzível e versionada; usado só no `convert_policies.py`, em *build-time* (§3) |
@@ -175,16 +187,20 @@ decoradas com `@tool` (`langchain-core`).
   de clientes. Rodar o modelo localmente evita mandar esses dados para uma API de terceiros —
   um argumento real de conformidade, não só de custo.
 - **Trade-off assumido:** *tool calling* de modelos abertos pequenos é menos confiável que o de
-  modelos frontier. Mitigações: só 4 ferramentas, descrições ricas, `temperature=0.3`, e um
+  modelos frontier. Mitigações: só 4 ferramentas, descrições ricas, `temperature=0`, e um
   system prompt curto e imperativo. O código é agnóstico ao modelo (`base_url` + `MODEL` no
   `.env`), então trocar por uma API é mudar duas variáveis.
-- **Recomendação:** Qwen3.5-9B (`qwen/qwen3.5-9b`) — passou o `test_live.py` (16/16 na última
-  rodada). A família Qwen2.5-Instruct 7B+ é uma alternativa mais leve. Modelos frontier via API
-  resolveriam a latência e a confiabilidade do *tool calling*, ao custo de mandar PII pra fora.
+- **Recomendação:** Qwen3.8-27B (`qwen/qwen3.8-27b`) — é o modelo do relatório versionado:
+  **20/20 casos, 3 rodadas cada** ([`eval_report.md`](eval_report.md)). O Qwen3.5-9B, com que o
+  projeto foi construído, é a alternativa leve: bem mais rápido, e foi com ele que apareceram os
+  erros de *tool calling* que viraram regra de prompt. Modelos frontier via API resolveriam
+  latência e confiabilidade de uma vez, ao custo de mandar PII para fora.
 - **A tensão que esta escolha assume:** o problema de negócio do enunciado é *volume* — "a
-  equipe está sobrecarregada com perguntas recorrentes". Um modelo local a 10 s–2 min por
-  turno, sem *streaming* nem fila, **demonstra** que a lógica do agente funciona, mas não
-  ataca o volume: um atendente esperando 2 minutos por resposta não está menos sobrecarregado.
+  equipe está sobrecarregada com perguntas recorrentes". Os números são medidos, não estimados
+  ([`eval_report.md`](eval_report.md), 60 execuções): **mediana de 56 s por caso**, e 415 s no
+  pior (uma conversa de 7 turnos). Sem *streaming* nem fila, isso **demonstra** que a lógica do
+  agente funciona, mas não ataca o volume: um atendente esperando um minuto por resposta não
+  está menos sobrecarregado.
   Este protótipo otimiza para custo, privacidade e reprodutibilidade offline; um deployment
   real contra o volume seria outra decisão — modelo servido com *batching* (ou API), resposta
   em *streaming*, e uma fila de atendimento. O agente aqui é a peça que se prova primeiro; a
@@ -258,9 +274,23 @@ pedido estaria fora de qualquer prazo** (7 dias de arrependimento, 30 de defeito
 sugerida no enunciado ("me arrependi, posso devolver?") nunca teria um caso positivo.
 
 O dataset é um *snapshot*, então o agente ancora o "hoje" numa data de referência configurável
-(padrão `2026-03-25`, logo após o último pedido). A tool `status_pedido` devolve
-`dias_desde_pedido` já calculado — o agente compara com o prazo que vem do **texto da
-política**, sem regra de prazo hard-coded.
+(padrão `2026-03-25`, logo após o último pedido). A tool `status_pedido` devolve os dias já
+calculados — o agente compara com o prazo que vem do **texto da política**, sem regra de prazo
+hard-coded.
+
+**Qual relógio (corrigido depois de reler a política):** a data de referência resolve metade do
+problema. A outra metade é *de quando* cada prazo conta. O manual §4.1 dá 7 dias corridos
+**após o recebimento** do produto; §4.2 dá 30 dias **após a compra**. A tool só sabe a data da
+compra — o dataset tem previsão de entrega, mas **nenhuma data de entrega efetiva**. Comparar
+os 7 dias com o relógio da compra é medir a coisa errada, e era o que o prompt mandava fazer.
+
+Agora `status_pedido` rotula o número como "há N dias **da compra**" e declara explicitamente
+que o sistema não registra recebimento; o prompt manda o agente reparar de quando o prazo conta
+e **perguntar ao cliente quando ele recebeu** se for o caso. Efeito colateral bom: com
+`2026-03-25` nenhum pedido está a menos de 7 dias da compra, então o cenário do enunciado ("me
+arrependi, posso devolver?") só tinha resposta negativa. Perguntando a data de recebimento, o
+caso positivo passa a existir — e virou caso de eval
+(`devolucao_recebido_dentro_do_prazo`).
 
 ### 6. Verificação de identidade — consciente de LGPD
 
@@ -291,6 +321,20 @@ de verdade, que está nas limitações (login, código por e-mail/WhatsApp, rate
 fechar o app: reabrir com o mesmo `thread_id` (campo na barra lateral do Streamlit) retoma o
 contexto. Custo de implementação: ~5 linhas.
 
+**Poda do histórico (`agent._podar`).** Persistir tudo e *reenviar* tudo são coisas diferentes.
+Sem poda, o `create_react_agent` manda a conversa inteira ao modelo a cada turno; como
+`consultar_politica` pode devolver 3 seções (~1.200 tokens), 10-15 turnos estouram a janela de
+um modelo local — em silêncio, degradando as respostas antes de falhar. Um `pre_model_hook`
+com `trim_messages` (`langchain-core`) corta pelos últimos `MAX_HISTORY_TOKENS` (padrão 8.000,
+configurável no `.env`) **só o que vai para o LLM**; o histórico salvo continua completo, então
+o `thread_id` ainda retoma a conversa toda.
+
+O detalhe que faz isso funcionar é `start_on="human"`: cortar no meio de uma sequência de
+ferramenta deixaria uma `ToolMessage` sem a chamada que a originou, e a API rejeita o request.
+`test_poda_historico` (sem LLM) monta 240 mensagens sintéticas e verifica as duas coisas — que
+podou e que não sobrou `ToolMessage` órfã. O caso `conversa_longa_nao_perde_a_ferramenta`
+cobre o mesmo ponta a ponta.
+
 ### 8. Interface — Streamlit
 
 Chat web pronto em poucas linhas, bom para a demonstração e para gerar os exemplos. O
@@ -317,9 +361,19 @@ quando a política não cobre a pergunta. Surgiu de uma falha real — o modelo 
 "compensação por atraso na entrega", que não existe no manual. A regra **reduz** a frequência
 mas **não a zera**: para a mesma pergunta-isca, rodadas diferentes deram ora uma resposta
 100% ancorada na §5, ora um resíduo ("não temos reembolso por atraso" + um prazo inventado).
-Guardrail de prompt sobre modelo local (`temperature=0.3`) é probabilístico. Fechar de vez
+Guardrail de prompt sobre modelo local é probabilístico, mesmo com `temperature=0`
+(o sampler deixa de variar, o modelo não). Fechar de vez
 exigiria um check pós-resposta determinístico ou o eval automatizado — ambos listados em
 "Com mais tempo".
+
+**O que saiu do prompt (e por quê).** Duas coisas que estavam ali duplicavam o `policies.md`:
+os prazos de troca ("7 dias para arrependimento, 30 para defeito") e o horário de funcionamento.
+Duplicata de política no prompt é dívida em dois sentidos: se o manual mudar, o prompt mente — e
+ele chega ao modelo *antes* da ferramenta, então vence. Pior, o horário no prompt dava ao modelo
+um atalho para responder sem chamar `consultar_politica`, que é justamente o comportamento que o
+projeto quer provar. Os dois saíram; a regra que ficou diz *como* comparar (leia de quando o
+prazo conta no texto retornado), não *qual é* o prazo. Convenção do projeto: regra de política
+vive no texto, não no código nem no prompt.
 
 Várias dessas regras foram acrescentadas **depois de observar falhas em conversas reais** —
 ver os commits `fix: ...` e `prompt: ...`.
@@ -335,16 +389,21 @@ sem tocar em código.
 
 Dois níveis, ambos com `assert` e um `main()` próprio, sem pytest:
 
-- **`test_agent.py`** (7 funções, sem LLM): a lógica determinística — views do ETL, roteamento
-  de política, as tools de dados, e os ataques à verificação de identidade (repetição, spray,
-  sobrenome, *bound* de colisão cruzada). Rápido, roda em qualquer lugar.
-- **`test_live.py`** (16 casos, contra o LM Studio): a avaliação do agente ponta a ponta —
+- **`test_agent.py`** (8 funções, sem LLM): a lógica determinística — views do ETL, roteamento
+  de política, as tools de dados, os ataques à verificação de identidade (repetição, spray,
+  sobrenome, *bound* de colisão cruzada) e a poda de histórico. Rápido, roda em qualquer lugar.
+- **`test_live.py`** (20 casos × k rodadas, contra o LM Studio): a avaliação ponta a ponta —
   cada caso declara os turnos do cliente, a(s) ferramenta(s) esperada(s) e o que a resposta
   deve / não deve conter. Lento e não 100% determinístico (é o preço de avaliar um modelo
   local), mas é o que trava regressão de comportamento quando o prompt muda.
 
-Três detalhes de desenho do eval, todos por causa de furo encontrado ao revisar as asserções:
+Quatro detalhes de desenho do eval, todos por causa de furo encontrado ao revisar as asserções:
 
+- **Rodar uma vez não mede nada.** O agente é não determinístico; um caso que passa uma vez
+  pode ser sorte. Cada caso roda `--rodadas` vezes (padrão 3) em *threads* novas, e o que o
+  relatório mostra é a **taxa** (3/3, 2/3…). Um caso não-`flaky` só passa se acertar em todas.
+  A versão anterior rodava n=1 e reportava "16/16" — o próprio comentário de um caso já pedia
+  "rode 3x antes de acreditar num ok isolado", mas o código não fazia isso.
 - **Oráculo de PII derivado, não escrito à mão.** O caso de recusa de identidade não lista as
   strings proibidas: ele chama `status_pedido` com a identidade *correta*, extrai todo campo
   sensível do retorno (nome, data, itens, valor, forma de pagamento, previsão, rastreio) e
@@ -363,6 +422,10 @@ encontrei nada" para um produto que **existe e está sem estoque**, indistinguí
 produto inexistente, e o agente repassava ao cliente "não está no catálogo". A tool agora
 separa os dois casos; o caso passou a 3/3.
 
+Cada execução escreve **[`eval_report.md`](eval_report.md)** com a taxa e a latência (mediana e
+pior caso) de cada caso. O arquivo é versionado de propósito: quem for avaliar o projeto vê o
+número sem precisar instalar o LM Studio e baixar o modelo.
+
 pytest seria uma dependência a mais sem ganho nessa escala.
 
 ---
@@ -370,13 +433,17 @@ pytest seria uma dependência a mais sem ganho nessa escala.
 ## Limitações conhecidas
 
 - **Confiabilidade do *tool calling* depende do modelo local.** Um modelo fraco pode responder
-  preço/estoque sem chamar a ferramenta, ou vazar uma resposta fora de escopo. Com Qwen3.5-9B a
-  última rodada do `test_live.py` deu 16/16, mas não é garantido a 100% — daí o eval existir.
-  Rodando um caso isolado várias vezes dá para ver a oscilação: qual ferramenta o agente
-  escolhe e como ele frasea variam entre execuções, com o mesmo input.
-- **Latência vs. o problema de volume.** Cada turno leva ~10 s a ~2 min (modelo local, sem
-  *streaming*). Aceitável para demonstrar o agente, mas não ataca a sobrecarga da equipe que
-  motivou o projeto — ver a "tensão que esta escolha assume" na decisão 2.
+  preço/estoque sem chamar a ferramenta, ou vazar uma resposta fora de escopo. Com Qwen3.8-27B
+  a última execução deu 20/20 em 3 rodadas, **e 3 rodadas não provam 100%** — inclusive o caso
+  marcado `flaky` (a isca de "reembolso por atraso") passou 3/3 aqui, o que não o torna
+  resolvido: a flag fica até haver amostra maior ou um guard determinístico. Com modelos
+  menores a oscilação é visível: qual ferramenta o agente escolhe e como ele frasea variam
+  entre execuções com o mesmo input.
+- **Latência vs. o problema de volume.** Mediana de 56 s por caso e 415 s no pior, medidos em
+  60 execuções com o 27B local, sem *streaming*. Aceitável para demonstrar o agente, mas não
+  ataca a sobrecarga da equipe que motivou o projeto — ver a "tensão que esta escolha assume"
+  na decisão 2. O 9B é bem mais rápido, com *tool calling* menos confiável: é exatamente o
+  trade-off que o eval existe para medir.
 - **Sem guard determinístico de escopo.** A recusa de assuntos fora da loja é só via prompt.
 - **Verificação de identidade não é autenticação.** Exige nome+sobrenome ou e-mail exato
   (ver decisão 6), mas não há login, código de confirmação nem rate limit — e `order_id` é
@@ -392,9 +459,10 @@ pytest seria uma dependência a mais sem ganho nessa escala.
 
 ## Com mais tempo
 
-- **Expandir a avaliação** (`test_live.py` já existe com 16 casos): mais cenários, um
-  LLM-as-judge para os julgamentos mais sutis (tom, completude), e rodar em CI com um modelo
-  servido pequeno em vez de depender do LM Studio local.
+- **LLM-as-judge** para os julgamentos que `contém`/`não contém` não alcança (tom, completude,
+  se a recusa soou cordial). Hoje o eval só checa substring e ferramenta chamada.
+- **Rodar o eval em CI**, com um modelo servido pequeno em vez de depender do LM Studio local —
+  hoje é um comando manual, e por isso o relatório é versionado.
 - **Guard de saída** determinístico para grounding de política: se a resposta final citar um
   prazo/regra que não aparece literalmente no texto que a tool retornou naquele turno,
   descartar e regenerar. Fecharia o resíduo que `test_live.py` hoje só detecta.
@@ -409,7 +477,8 @@ pytest seria uma dependência a mais sem ganho nessa escala.
 
 ## Uso de assistentes de código
 
-Todo o projeto foi construído em par com o **Claude Code** (modelo Claude Sonnet), no seguinte
+Todo o projeto foi construído em par com o **Claude Code** — Claude Sonnet na construção e
+Claude Opus na revisão técnica e na rodada de correções que ela gerou —, no seguinte
 fluxo:
 
 1. **Leitura e entrevista (plan mode).** O Claude leu o enunciado, o manual de políticas e os 6
@@ -448,8 +517,9 @@ prompts.py           system prompt — persona + regras
 agent.py             create_react_agent + checkpointer SQLite; REPL em __main__
 app.py               interface Streamlit
 run_examples.py      gera examples/*.md rodando o agente nos 5 cenários
-test_agent.py        7 checks assert-based, sem LLM
-test_live.py         16 casos de avaliação ponta a ponta contra o LM Studio
+test_agent.py        8 checks assert-based, sem LLM
+test_live.py         avaliação ponta a ponta contra o LM Studio (k rodadas por caso)
+eval_report.md       saída da última execução do eval — taxa e latência por caso
 CLAUDE.md            visão geral para retomar o projeto depois
 CHECKLIST.md         progresso por partes
 data/                dados fornecidos (não alterados)

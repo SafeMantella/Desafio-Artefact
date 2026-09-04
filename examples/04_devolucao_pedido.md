@@ -1,30 +1,12 @@
 # NÃO TRIVIAL: devolução aplicando política + dados do pedido
 
 
-_Modelo: qwen/qwen3.5-9b. Gerado por `run_examples.py`._
+_Modelo: qwen/qwen3.8-27b. Gerado por `run_examples.py`._
 
 
-**Cliente:** Me arrependi de uma compra que fiz, o pedido 8. Consigo devolver?
+**Cliente:** Comprei um ukulele aí e me arrependi. É o pedido 7, consigo devolver?
 
-**Assistente:** Olá! Para verificar se o seu pedido 8 está dentro do prazo para devolução, preciso confirmar sua identidade primeiro (por segurança e LGPD).
-
-Poderia me passar o **e-mail** ou o **nome completo** (nome e sobrenome) que estava no pedido? Assim consigo consultar o status e te dar a resposta correta!
-
-**Cliente:** É a Ana Carolina Ferreira
-
-> 🔧 chama `status_pedido(order_id=8, identificador='Ana Carolina Ferreira')`
-
-> 🔧 `status_pedido` →
->
-> Pedido 8 — enviado, a caminho
-> Cliente: Ana Carolina Ferreira
-> Data do pedido: 15/02/2026 (há 38 dias; hoje = 25/03/2026)
-> Itens: 1x Kala KA-C Concert Mogno
-> Valor total: R$ 349,90  ·  Pagamento: cartão de débito
-> Previsão de entrega: 28/02/2026
-> Código de rastreio: BRJL5544332BR
-
-> 🔧 chama `consultar_politica(topico='trocas devoluções arrependimento')`
+> 🔧 chama `consultar_politica(topico='política de devolução e arrependimento')`
 
 > 🔧 `consultar_politica` →
 >
@@ -48,28 +30,36 @@ Poderia me passar o **e-mail** ou o **nome completo** (nome e sobrenome) que est
 > - Produto em perfeito estado e na embalagem original.
 > - Di […]
 
-**Assistente:** Olá, Ana Carolina! Tudo bem?
+**Assistente:** Claro, sem problema! Pra eu consultar o pedido 7, preciso confirmar sua identidade: me passa seu **e-mail** ou **nome e sobrenome**, por favor?
 
-Verifiquei o status do seu pedido 8 e encontrei algumas informações importantes:
+E já adiantando: o direito de arrependimento vale por **7 dias corridos a partir do recebimento** — então, quando você me der esses dados, também me diz **quando recebeu o ukulele** que eu já te digo se dá tempo de devolver. 🎶
 
-- **Status atual:** O pedido está "enviado, a caminho" (em trânsito).
-- **Data do pedido:** 15/02/2026.
-- **Produto:** 1x Kala KA-C Concert Mogno.
-- **Preço:** R$ 349,90.
+**Cliente:** Letícia Gonçalves Rocha
 
-Sobre a devolução: **ainda não é possível** fazer o pedido de volta agora, porque o produto **ainda não foi entregue**.
+> 🔧 chama `status_pedido(order_id=7, identificador='Letícia Gonçalves Rocha')`
 
-De acordo com nossa política de trocas e devoluções:
-- Para **arrependimento** (mudança de ideia): você tem **7 dias corridos a partir do RECEBIMENTO** do produto.
-- Para **defeito**: você tem **30 dias corridos a partir da compra**.
+> 🔧 `status_pedido` →
+>
+> Pedido 7 — entregue
+> Cliente: Letícia Gonçalves Rocha
+> Data do pedido: 03/02/2026 (há 50 dias da compra; hoje = 25/03/2026)
+> Itens: 1x Shelby SU-21S Soprano Sunburst
+> Valor total: R$ 159,90  ·  Pagamento: cartão de crédito em 3x
+> Previsão de entrega: 17/02/2026
+> Código de rastreio: BRKR1122334BR
+> Obs.: o sistema NÃO registra a data de recebimento, só a da compra. Se o prazo da política contar a partir do recebimento, pergunte ao cliente quando ele recebeu antes de dizer se está dentro ou fora do prazo.
 
-Como o pedido ainda está em trânsito (a previsão de entrega era 28/02/2026), você só poderá exercer esse direito após receber o violão.
+**Assistente:** Oi, Letícia! Encontrei seu pedido: **Shelby SU-21S Soprano Sunburst** por R$ 159,90, pago em 3x no cartão. O status está como entregue, com previsão de entrega em 17/02/2026.
 
-**O que fazer agora:**
-1. Acompanhe o rastreio (código: BRJL5544332BR) para saber quando chegar.
-2. Assim que receber, verifique se o produto está em perfeito estado.
-3. Se tiver algum problema, entre em contato conosco **imediatamente** para iniciarmos o processo de troca/devolução.
+Só falta um detalhe: o prazo de arrependimento é de **7 dias corridos a partir do recebimento**, e o sistema não registra a data exata em que você recebeu. Me conta: **em que data você recebeu o ukulele?** Com isso eu te digo se ainda dá tempo de devolver. 🎶
 
-Se o produto chegar e estiver tudo certo, você pode ficar tranquila com a compra! 😊
+**Cliente:** Recebi ele ontem.
 
-Precisa de mais alguma ajuda com o pedido ou com algum instrumento? Sua música começa aqui! 🎸
+**Assistente:** Perfeito, Letícia! Se você recebeu ontem (24/03), está **dentro do prazo de 7 dias** — pode devolver sim! ✅
+
+Só precisa garantir:
+- Ukulele na **embalagem original**, sem sinais de uso, com todos os acessórios e manuais;
+- O **reembolso** vai para o mesmo cartão de crédito, em até 10 dias úteis;
+- O **frete de devolução é por nossa conta**.
+
+Me avisa quando quiser que eu te oriento sobre o próximo passo. E, se mudar de ideia, o ukulele é um bichinho lindo — vale a pena uma chance com ele também 😄
