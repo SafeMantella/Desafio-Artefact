@@ -54,11 +54,10 @@ cenários em [`test_live.py`](test_live.py), com taxa e latência por caso em [`
 - **Python 3.11+**
 - **[LM Studio](https://lmstudio.ai/)** com um modelo que atenda a três requisitos:
   suporte a *tool use* / function calling, português do Brasil decente e janela de
-  contexto de **20k ou mais** (subiu da recomendação anterior de 16k — o system prompt
+  contexto de **40k ou mais** (subiu da recomendação anterior de 16k — o system prompt
   sozinho já tem ~3,5k tokens, mais ~1,5-2k dos schemas das 7 ferramentas: ~5,5k de custo
-  fixo por turno, antes de qualquer histórico ou retorno de ferramenta. A margem em 16k
-  ficou apertada conforme o prompt cresceu com mais guardrails, mesmo o padrão
-  `MAX_HISTORY_TOKENS=8000` ainda cabendo tecnicamente). O projeto não depende de nenhum
+  fixo por turno, antes de qualquer histórico ou retorno de ferramenta, somado ao padrão
+  `MAX_HISTORY_TOKENS=32000`). O projeto não depende de nenhum
   modelo específico — o `.env`
   troca o modelo e o endpoint sem tocar em código, e foi exercitado com vários portes
   diferentes ao longo do desenvolvimento. Qual foi usado na avaliação versionada está no
@@ -347,7 +346,7 @@ contexto.
 Sem poda, o `create_react_agent` manda a conversa inteira ao modelo a cada turno; como
 `consultar_politica` pode devolver 3 seções (~1.200 tokens), 10-15 turnos estouram a janela de
 um modelo local — em silêncio, degradando as respostas antes de falhar. Um `pre_model_hook`
-com `trim_messages` (`langchain-core`) corta pelos últimos `MAX_HISTORY_TOKENS` (padrão 8.000,
+com `trim_messages` (`langchain-core`) corta pelos últimos `MAX_HISTORY_TOKENS` (padrão 32.000,
 configurável no `.env`) **só o que vai para o LLM**; o histórico salvo continua completo, então
 o `thread_id` ainda retoma a conversa toda.
 

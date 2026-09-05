@@ -23,9 +23,9 @@ MODEL = os.getenv("MODEL", "qwen/qwen3.5-9b")
 DATA_REFERENCE_DATE = date.fromisoformat(os.getenv("DATA_REFERENCE_DATE", "2026-03-25"))
 
 # Teto do histórico enviado ao modelo a cada turno. O checkpointer guarda a conversa
-# inteira; o que vai pro LLM é podado (ver agent._podar). Modelo local costuma ter
-# janela de 16k — deixamos folga para o system prompt e para o retorno das tools.
-MAX_HISTORY_TOKENS = int(os.getenv("MAX_HISTORY_TOKENS", "8000"))
+# inteira; o que vai pro LLM é podado (ver agent._podar). Modelo local recomendado tem
+# janela de 40k+ — o custo fixo do system prompt + schema das 7 tools já soma ~5,5k.
+MAX_HISTORY_TOKENS = int(os.getenv("MAX_HISTORY_TOKENS", "32000"))
 
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"),
                     format="%(asctime)s %(levelname)s %(message)s")
