@@ -8,10 +8,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-ROOT = Path(__file__).parent
+ROOT = Path(__file__).parent.parent
 DATA_DIR = ROOT / "data"
 DB_PATH = ROOT / "emporio.db"
-POLICIES_PATH = ROOT / "policies.md"
+POLICIES_PATH = ROOT / "docs" / "policies.md"
 
 # LM Studio expõe uma API compatível com a da OpenAI; o cliente da OpenAI/LangChain
 # só precisa da base_url e de uma api_key qualquer (não vazia).

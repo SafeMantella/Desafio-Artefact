@@ -1,8 +1,8 @@
 """Avaliação do agente contra o LLM de verdade. Precisa do LM Studio no ar.
 
-    python test_live.py                  # todos os casos, 3 rodadas cada
-    python test_live.py catalogo         # só os casos cujo nome contém "catalogo"
-    python test_live.py --rodadas 1      # 1 rodada (rápido, para iterar)
+    python tests/test_live.py                  # todos os casos, 3 rodadas cada
+    python tests/test_live.py catalogo         # só os casos cujo nome contém "catalogo"
+    python tests/test_live.py --rodadas 1      # 1 rodada (rápido, para iterar)
 
 Cada caso declara: mensagens do cliente → qual ferramenta o agente devia (ou não) chamar +
 o que a resposta final deve / não deve conter. Complementa test_agent.py (que não usa o LLM).
@@ -10,7 +10,7 @@ o que a resposta final deve / não deve conter. Complementa test_agent.py (que n
 Por que k rodadas: o agente é não determinístico. Um caso que passa uma vez não prova nada —
 o que interessa é a TAXA de acerto. Cada rodada usa uma thread nova. O resultado sai em
 eval_report.md com a taxa e a latência por caso.
-É lento: ~1-2 min por caso por rodada. Não roda no test_agent.py de propósito.
+É lento: ~1-2 min por caso por rodada. Não roda no tests/test_agent.py de propósito.
 """
 import re
 import statistics
@@ -18,6 +18,9 @@ import sys
 import time
 import uuid
 from datetime import datetime
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from langchain_core.messages import AIMessage
 
@@ -25,7 +28,7 @@ from agent import build_agent
 from config import MODEL, ROOT
 from tools import _norm, status_pedido
 
-RELATORIO = ROOT / "eval_report.md"
+RELATORIO = ROOT / "docs" / "eval_report.md"
 
 # contem / nao_contem: substrings (case-insensitive) na resposta final.
 #   em `contem`, "a|b" = qualquer uma serve (evita blacklist de frase, que é sempre incompleta).

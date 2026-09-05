@@ -50,24 +50,30 @@ Entregáveis: repo público + `README.md` (setup + justificativas + limitações
 ## 3. Mapa do repo
 
 ```
-config.py          paths, MODEL, OPENAI_BASE_URL, DATA_REFERENCE_DATE (lê .env)
-build_db.py        ETL: os 6 CSVs de data/ → emporio.db (tabelas + views)   [Parte 1]
-convert_policies.py  PDF de políticas → policies_raw.md (pymupdf4llm)         [Parte 2]
-policies_raw.md    saída bruta da conversão (artefato reproduzível)          [Parte 2]
-policies.md        policies_raw.md curado (headings limpos, divergências resolvidas) — usado pelo agente  [Parte 2]
-tools.py           as 6 tools LangChain (buscar_produtos, detalhe_produto,
+src/config.py          paths, MODEL, OPENAI_BASE_URL, DATA_REFERENCE_DATE (lê .env)
+src/build_db.py        ETL: os 6 CSVs de data/ → emporio.db (tabelas + views)   [Parte 1]
+src/convert_policies.py  PDF de políticas → docs/policies_raw.md (pymupdf4llm)    [Parte 2]
+docs/policies_raw.md   saída bruta da conversão (artefato reproduzível)          [Parte 2]
+docs/policies.md       policies_raw.md curado (headings limpos, divergências resolvidas) — usado pelo agente  [Parte 2]
+src/tools.py           as 6 tools LangChain (buscar_produtos, detalhe_produto,
                    status_pedido, consultar_politica, simular_pagamento,
                    identificar_cliente)                              [Partes 2-3, 11]
-prompts.py         system prompt / persona / regras                         [Parte 4]
-agent.py           monta o ReAct agent + checkpointer                       [Parte 4]
-app.py             Streamlit                                                [Parte 5]
-test_agent.py      13 checks assert-based, sem LLM (views+ETL, política sem perda,
+src/prompts.py         system prompt / persona / regras                         [Parte 4]
+src/agent.py           monta o ReAct agent + checkpointer                       [Parte 4]
+src/app.py             Streamlit                                                [Parte 5]
+tests/test_agent.py    13 checks assert-based, sem LLM (views+ETL, política sem perda,
                    roteamento das 10 seções, tools, identidade, parcelamento/frete, poda)  [ao longo]
-test_live.py       avaliação ponta a ponta contra o LM Studio, k rodadas por caso      [Parte 9-10]
-eval_report.md     saída da última execução do eval (taxa + latência por caso)      [Parte 10]
+tests/test_live.py     avaliação ponta a ponta contra o LM Studio, k rodadas por caso      [Parte 9-10]
+docs/eval_report.md    saída da última execução do eval (taxa + latência por caso)      [Parte 10]
+docs/README_pt.md      README em PT-BR
+docs/validacao_conversa_longa.md  validação de poda de histórico contra o modelo real
 examples/          3-5 conversas de exemplo                                 [Parte 6]
 data/              dados fornecidos — NÃO alterar
+emporio.db         gerado por src/build_db.py — sempre na raiz do projeto
 ```
+
+`config.ROOT` é `Path(__file__).parent.parent` (sobe de `src/` pra raiz) — `data/`,
+`docs/`, `emporio.db` ficam todos na raiz, não dentro de `src/`.
 
 ## 4. Como rodar
 
@@ -75,8 +81,8 @@ data/              dados fornecidos — NÃO alterar
    **Start Server** (porta 1234).
 2. `python -m venv .venv && source .venv/bin/activate && pip install -r requirements.txt`
 3. `cp .env.example .env` (ajustar `MODEL` para o id exato carregado no LM Studio)
-4. `python build_db.py` → gera `emporio.db`
-5. `streamlit run app.py`
+4. `python src/build_db.py` → gera `emporio.db`
+5. `streamlit run src/app.py`
 
 ## 5. Estado atual
 

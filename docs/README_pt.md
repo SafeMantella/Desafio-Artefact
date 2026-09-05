@@ -16,7 +16,7 @@ pagamento, frete, garantia). Perguntas fora do escopo da loja são recusadas edu
 > posso devolver?"* — nunca teria um caso positivo. Por isso o "hoje" do agente é uma data
 > de referência ancorada logo após o último pedido, e não `date.today()`.
 >
-> Vale para tudo o que você vai ver aqui: as conversas de [`examples/`](examples/), os casos
+> Vale para tudo o que você vai ver aqui: as conversas de [`examples/`](../examples/), os casos
 > de [`eval_report.md`](eval_report.md) e os testes. Muda numa variável —
 > `DATA_REFERENCE_DATE` no `.env` — sem tocar em código. **O porquê completo está na
 > [decisão 5](#5-conceito-de-hoje--data_reference_date-configurável).**
@@ -42,8 +42,8 @@ pagamento, frete, garantia). Perguntas fora do escopo da loja são recusadas edu
 - *"Quero pagar R$ 500 no PIX e o resto no cartão em R$ 1.500"* → recusa a divisão porque combinação de formas só é permitida acima de R$ 2.000 (§3.1)
 - *"Moro em Campo Grande e minha compra deu R$ 500 redondo, o frete é grátis?"* → informa que paga taxa fixa de R$ 35,00, pois frete grátis é estritamente acima de R$ 500 (§5.1)
 
-Cinco conversas completas estão em [`examples/`](examples/), e a avaliação de ponta a ponta com 44
-cenários em [`test_live.py`](test_live.py), com taxa e latência por caso em [`eval_report.md`](eval_report.md).
+Cinco conversas completas estão em [`examples/`](../examples/), e a avaliação de ponta a ponta com 44
+cenários em [`test_live.py`](../test_live.py), com taxa e latência por caso em [`eval_report.md`](eval_report.md).
 
 ---
 
@@ -74,7 +74,7 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 2. Banco local a partir dos CSVs
-python build_db.py                 # gera emporio.db
+python src/build_db.py                 # gera emporio.db
 
 # 3. Configuração
 cp .env.example .env               # ajuste MODEL para o id exato carregado no LM Studio
@@ -85,9 +85,9 @@ cp .env.example .env               # ajuste MODEL para o id exato carregado no L
 #    Sugestão de carregamento: GPU offload no máximo + contexto máximo
 
 # 5. Rode a interface
-streamlit run app.py               # UI de chat  (http://localhost:8501)
+streamlit run src/app.py               # UI de chat  (http://localhost:8501)
 # ou, no terminal:
-python agent.py                    # REPL simples
+python src/agent.py                    # REPL simples
 ```
 
 Variáveis de ambiente (`.env`):
@@ -102,10 +102,10 @@ Variáveis de ambiente (`.env`):
 ### Testes
 
 ```bash
-python test_agent.py             # 13 checks determinísticos, sem LLM — segundos
-python test_live.py              # 44 casos × 3 rodadas contra o LM Studio — horas
-python test_live.py --rodadas 1  # 1 rodada só, para iterar
-python test_live.py identidade   # só os casos cujo nome contém "identidade"
+python tests/test_agent.py             # 13 checks determinísticos, sem LLM — segundos
+python tests/test_live.py              # 44 casos × 3 rodadas contra o LM Studio — horas
+python tests/test_live.py --rodadas 1  # 1 rodada só, para iterar
+python tests/test_live.py identidade   # só os casos cujo nome contém "identidade"
 ```
 
 - Os dois usam `DATA_REFERENCE_DATE=2026-03-25`: asserts de prazo ("há 79 dias", "7 dias")
@@ -130,23 +130,23 @@ python test_live.py identidade   # só os casos cujo nome contém "identidade"
 ## Arquitetura
 
 ```
-       Streamlit (app.py)  ──ou──  REPL (agent.py)
+       Streamlit (src/app.py)  ──ou──  REPL (src/agent.py)
                      │
                      ▼
         Agente ReAct  (LangChain + LangGraph, create_react_agent)
-          • system prompt = persona + regras  (prompts.py)
+          • system prompt = persona + regras  (src/prompts.py)
           • histórico persistido por thread_id (SqliteSaver → emporio.db)
                      │
         ┌────────────┴───────────────┐
         ▼                            ▼
-   7 tools (tools.py)                    LM Studio (modelo local)
+   7 tools (src/tools.py)                LM Studio (modelo local)
    ├─ buscar_produtos      ┐
    ├─ detalhe_produto      ├─→  emporio.db  (SQLite; views v_produto, v_pedido_item)
-   ├─ status_pedido        │        ▲   build_db.py: 6 CSVs → SQLite
+   ├─ status_pedido        │        ▲   src/build_db.py: 6 CSVs → SQLite
    ├─ identificar_cliente  │        │
    ├─ simular_pagamento    ┘        │
    ├─ calcular_frete       ──→ CEP/dimensões (cálculo local, sem tabela própria)
-   └─ consultar_politica   ──→ policies.md   (convert_policies.py: PDF → policies_raw.md)
+   └─ consultar_politica   ──→ docs/policies.md   (src/convert_policies.py: PDF → docs/policies_raw.md)
 ```
 
 O modelo recebe as cinco ferramentas e decide, a cada turno, se responde direto ou se chama

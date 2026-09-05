@@ -8,7 +8,7 @@ The agent adopts the store's persona, responds via text message, and knows **whe
 >
 > The provided dataset is a *snapshot*: the 20 orders span from Oct/2025 to **2026-03-22**. Against the real-world clock, every order would be past every deadline (7-day remorse return window, 30-day defect exchange, 90-day warranty), and the prompt's reference query, *"I regret my purchase, can I return it?"*, would never yield a positive case. That is why the agent's "today" is an anchored reference date set right after the last order, rather than `date.today()`.
 >
-> This applies to everything you see here: the conversations in [`examples/`](examples/), the test cases in [`eval_report.md`](eval_report.md), and the test suite. It can be changed in a single environment variable (`DATA_REFERENCE_DATE` in `.env`) without touching code. **The complete rationale is in [Decision 5](#5-concept-of-today-configurable-data_reference_date).**
+> This applies to everything you see here: the conversations in [`examples/`](examples/), the test cases in [`eval_report.md`](docs/eval_report.md), and the test suite. It can be changed in a single environment variable (`DATA_REFERENCE_DATE` in `.env`) without touching code. **The complete rationale is in [Decision 5](#5-concept-of-today-configurable-data_reference_date).**
 
 ---
 
@@ -28,7 +28,7 @@ The agent adopts the store's persona, responds via text message, and knows **whe
 - *"I want to pay R$ 500 via PIX and the remaining R$ 1,500 on card"* → declines the split because combining payment methods is only permitted for purchases over R$ 2,000 (§3.1)
 - *"I live in Campo Grande and my purchase was exactly R$ 500, is shipping free?"* → informs that a flat shipping fee of R$ 35.00 applies, since free shipping requires strictly *above* R$ 500 (§5.1)
 
-Five complete conversations are in [`examples/`](examples/), and an end-to-end evaluation covering 44 scenarios is in [`test_live.py`](test_live.py), with pass rate and latency per case reported in [`eval_report.md`](eval_report.md).
+Five complete conversations are in [`examples/`](examples/), and an end-to-end evaluation covering 44 scenarios is in [`test_live.py`](tests/test_live.py), with pass rate and latency per case reported in [`eval_report.md`](docs/eval_report.md).
 
 ---
 
@@ -37,7 +37,7 @@ Five complete conversations are in [`examples/`](examples/), and an end-to-end e
 ### Prerequisites
 
 - **Python 3.11+**
-- **[LM Studio](https://lmstudio.ai/)** with a model that meets three requirements: tool use / function calling support, decent Brazilian Portuguese, and a context window of **40k tokens or more** (up from an earlier 16k recommendation — the system prompt alone is ~3.5k tokens plus ~1.5-2k for the 7 tool schemas, a fixed ~5.5k cost per turn before any conversation history or tool output, on top of the `MAX_HISTORY_TOKENS=32000` default). The project does not depend on any specific model: `.env` allows swapping the model and endpoint without touching code, and was exercised across multiple model sizes throughout development. The model used for versioned evaluation is listed in the header of [`eval_report.md`](eval_report.md), which `test_live.py` automatically generates. Larger models handle tool calling more reliably and write better Portuguese at the expense of latency (see Decision 2). In LM Studio: max GPU offload recommended.
+- **[LM Studio](https://lmstudio.ai/)** with a model that meets three requirements: tool use / function calling support, decent Brazilian Portuguese, and a context window of **40k tokens or more** (up from an earlier 16k recommendation — the system prompt alone is ~3.5k tokens plus ~1.5-2k for the 7 tool schemas, a fixed ~5.5k cost per turn before any conversation history or tool output, on top of the `MAX_HISTORY_TOKENS=32000` default). The project does not depend on any specific model: `.env` allows swapping the model and endpoint without touching code, and was exercised across multiple model sizes throughout development. The model used for versioned evaluation is listed in the header of [`eval_report.md`](docs/eval_report.md), which `test_live.py` automatically generates. Larger models handle tool calling more reliably and write better Portuguese at the expense of latency (see Decision 2). In LM Studio: max GPU offload recommended.
 
 ### Steps
 
@@ -48,7 +48,7 @@ source .venv/bin/activate          # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
 # 2. Local database from CSVs
-python build_db.py                 # generates emporio.db
+python src/build_db.py                 # generates emporio.db
 
 # 3. Configuration
 cp .env.example .env               # adjust MODEL to the exact ID loaded in LM Studio
@@ -59,9 +59,9 @@ cp .env.example .env               # adjust MODEL to the exact ID loaded in LM S
 #    Recommended loading: max GPU offload + maximum context size
 
 # 5. Run the interface
-streamlit run app.py               # Chat UI  (http://localhost:8501)
+streamlit run src/app.py               # Chat UI  (http://localhost:8501)
 # or in the terminal:
-python agent.py                    # simple REPL
+python src/agent.py                    # simple REPL
 ```
 
 Environment variables (`.env`):
@@ -76,38 +76,38 @@ Environment variables (`.env`):
 ### Testing
 
 ```bash
-python test_agent.py             # 13 deterministic checks, no LLM (seconds)
-python test_live.py              # 44 cases × 3 rounds against LM Studio (hours)
-python test_live.py --rodadas 1  # 1 round only, for fast iteration
-python test_live.py identidade   # only test cases matching "identidade"
+python tests/test_agent.py             # 13 deterministic checks, no LLM (seconds)
+python tests/test_live.py              # 44 cases × 3 rounds against LM Studio (hours)
+python tests/test_live.py --rodadas 1  # 1 round only, for fast iteration
+python tests/test_live.py identidade   # only test cases matching "identidade"
 ```
 
 - Both test suites use `DATA_REFERENCE_DATE=2026-03-25`: deadline assertions ("79 days ago", "7 days") only make sense relative to this anchor. `test_agent.py` validates this up front and fails with an explanatory message rather than throwing an ambiguous config error.
 - **`test_agent.py`** covers non-trivial logic without invoking the model: ETL views (promotional pricing, non-cumulative PIX, availability, currency normalization, brand corrections), keyword routing across the 10 sections of `consultar_politica`, zero-loss curation of `policies.md`, data tools (incl. identity verification across the 20 orders), installment plan arithmetic, conversation history trimming, and graph compilation.
-- **`test_live.py`** is the end-to-end agent evaluation: each scenario declares customer messages, expected tool call(s), and what the final answer must/must not contain (exact price, no fabricated promotions, no PII leaked on failed identity checks, no made-up policies, persona consistency, out-of-scope refusals, etc.). Because the agent is non-deterministic, **each test case runs 3 times** and is evaluated by pass rate (3/3, 2/3...); passing once does not differentiate skill from luck. Cases with known variance are flagged `flaky=True`: reported with real pass rates without failing the suite. Every run writes [`eval_report.md`](eval_report.md) with pass rate and latency per case.
+- **`test_live.py`** is the end-to-end agent evaluation: each scenario declares customer messages, expected tool call(s), and what the final answer must/must not contain (exact price, no fabricated promotions, no PII leaked on failed identity checks, no made-up policies, persona consistency, out-of-scope refusals, etc.). Because the agent is non-deterministic, **each test case runs 3 times** and is evaluated by pass rate (3/3, 2/3...); passing once does not differentiate skill from luck. Cases with known variance are flagged `flaky=True`: reported with real pass rates without failing the suite. Every run writes [`eval_report.md`](docs/eval_report.md) with pass rate and latency per case.
 
 ---
 
 ## Architecture
 
 ```
-       Streamlit (app.py)  ──or──  REPL (agent.py)
+       Streamlit (src/app.py)  ──or──  REPL (src/agent.py)
                      │
                      ▼
          ReAct Agent  (LangChain + LangGraph, create_react_agent)
-           • system prompt = persona + guardrails  (prompts.py)
+           • system prompt = persona + guardrails  (src/prompts.py)
            • history persisted by thread_id (SqliteSaver → emporio.db)
                      │
          ┌────────────┴───────────────┐
          ▼                            ▼
-    7 tools (tools.py)                    LM Studio (local model)
+    7 tools (src/tools.py)                LM Studio (local model)
     ├─ buscar_produtos      ┐
     ├─ detalhe_produto      ├─→  emporio.db  (SQLite; views v_produto, v_pedido_item)
-    ├─ status_pedido        │        ▲   build_db.py: 6 CSVs → SQLite
+    ├─ status_pedido        │        ▲   src/build_db.py: 6 CSVs → SQLite
     ├─ identificar_cliente  │        │
     ├─ simular_pagamento    ┘        │
     ├─ calcular_frete       ──→ Zip code / dimensions (local calculation, standalone)
-    └─ consultar_politica   ──→ policies.md   (convert_policies.py: PDF → policies_raw.md)
+    └─ consultar_politica   ──→ docs/policies.md   (src/convert_policies.py: PDF → docs/policies_raw.md)
 ```
 
 The model receives the 7 tools and decides on each turn whether to reply directly or invoke a tool. Data tools execute **parameterized SQL** (the LLM never writes raw SQL). The policy tool returns the relevant markdown sections from the store manual.
@@ -164,8 +164,8 @@ A search takes **one single call**: `buscar_produtos` returns the full list (up 
 - **Zero cost and offline:** No API keys, no quotas, no billing.
 - **Data privacy:** The store policy manual explicitly references Brazil's LGPD privacy law. Customer support processes names, emails, and order history. Running the model locally prevents leaking sensitive customer PII to third-party APIs. A genuine compliance argument, not merely a cost consideration.
 - **Known trade-off:** Tool calling in small open models is less reliable than in frontier models. Mitigations: only 7 tools, detailed docstrings, `temperature=0`, and a compact system prompt. The codebase is model-agnostic (`base_url` + `MODEL` in `.env`), so switching to a cloud API only requires changing two environment variables.
-- **Model selection:** The primary axis is tool-calling reliability vs. inference latency. Smaller models respond in seconds but make occasional tool errors. These edge cases observed in real testing were codified into explicit prompt rules. Larger models make fewer tool errors at the expense of latency. [`eval_report.md`](eval_report.md) records which model produced each benchmark result, with pass rate and latency per case, enabling comparisons grounded in data rather than impression. Frontier models via API would solve latency and reliability simultaneously, at the cost of transmitting PII externally.
-- **The operational tension:** The core business problem stated in the challenge is *inquiry volume*: "the team is overwhelmed by repetitive questions". The numbers are measured, not guessed ([`eval_report.md`](eval_report.md), 87 runs): **median of 32s per case**, peaking at 177s in the worst-case scenario (`conversa_longa_nao_perde_a_ferramenta`, seven turns with tool calls in almost all). These apply to the model evaluated in that report; switching models shifts both numbers, which is why the versioned report records the exact model used. Without streaming or queues, this **demonstrates** the agent's logic, but does not address volume on a single local GPU: an agent waiting half a minute per response is not alleviating support bottlenecks. This prototype optimizes for cost, privacy, and offline reproducibility; a production deployment addressing real volume would use a batched serving layer (or API), streaming responses, and an asynchronous queue. The agent here is the component validated first; the serving layer is the next step, not an afterthought.
+- **Model selection:** The primary axis is tool-calling reliability vs. inference latency. Smaller models respond in seconds but make occasional tool errors. These edge cases observed in real testing were codified into explicit prompt rules. Larger models make fewer tool errors at the expense of latency. [`eval_report.md`](docs/eval_report.md) records which model produced each benchmark result, with pass rate and latency per case, enabling comparisons grounded in data rather than impression. Frontier models via API would solve latency and reliability simultaneously, at the cost of transmitting PII externally.
+- **The operational tension:** The core business problem stated in the challenge is *inquiry volume*: "the team is overwhelmed by repetitive questions". The numbers are measured, not guessed ([`eval_report.md`](docs/eval_report.md), 87 runs): **median of 32s per case**, peaking at 177s in the worst-case scenario (`conversa_longa_nao_perde_a_ferramenta`, seven turns with tool calls in almost all). These apply to the model evaluated in that report; switching models shifts both numbers, which is why the versioned report records the exact model used. Without streaming or queues, this **demonstrates** the agent's logic, but does not address volume on a single local GPU: an agent waiting half a minute per response is not alleviating support bottlenecks. This prototype optimizes for cost, privacy, and offline reproducibility; a production deployment addressing real volume would use a batched serving layer (or API), streaming responses, and an asynchronous queue. The agent here is the component validated first; the serving layer is the next step, not an afterthought.
 
 </details>
 
@@ -270,7 +270,7 @@ Customer orders expose PII (name, email, items, purchase price, delivery estimat
 
 **History trimming (`agent._podar`).** Persisting all history and *resending* all history are distinct concerns. Without trimming, `create_react_agent` resends the full conversation transcript on every turn; since `consultar_politica` can return up to 3 sections (~1,200 tokens), 10-15 turns will exceed local model context windows, quietly degrading answers before crashing. A `pre_model_hook` leveraging `trim_messages` (`langchain-core`) caps the payload sent to the LLM to the latest `MAX_HISTORY_TOKENS` (default 32,000, configurable in `.env`). The persisted SQLite history remains intact.
 
-The critical requirement for trimming is `start_on="human"`: slicing mid-turn across a tool call would leave an orphaned `ToolMessage` missing its preceding `AIMessage(tool_calls=...)`, causing the OpenAI API to reject the request. `test_poda_historico` generates 240 synthetic messages, validating both token trimming and zero orphaned tool messages. Test scenario `conversa_longa_nao_perde_a_ferramenta` verifies this end-to-end, and [`validacao_conversa_longa.md`](validacao_conversa_longa.md) documents validation against the live model: 42 conversation turns before trimming triggered, plus deep truncation tests (22 of 36 messages pruned) with zero API rejections and accurate tool execution.
+The critical requirement for trimming is `start_on="human"`: slicing mid-turn across a tool call would leave an orphaned `ToolMessage` missing its preceding `AIMessage(tool_calls=...)`, causing the OpenAI API to reject the request. `test_poda_historico` generates 240 synthetic messages, validating both token trimming and zero orphaned tool messages. Test scenario `conversa_longa_nao_perde_a_ferramenta` verifies this end-to-end, and [`validacao_conversa_longa.md`](docs/validacao_conversa_longa.md) documents validation against the live model: 42 conversation turns before trimming triggered, plus deep truncation tests (22 of 36 messages pruned) with zero API rejections and accurate tool execution.
 
 **When trimming begins depends on model verbosity.** In a 28-turn validation via Streamlit with a verbose model, history expanded at ~340 tokens per turn: reaching 5,100 tokens at turn 15 and 9,600 tokens at turn 28 across 94 messages with 14 tool invocations. Under that pace, an 8,000 ceiling begins trimming around turn 23. Testing `_podar` against live transcripts with tighter ceilings (4,000 and 1,000) reduced message counts from 71 to 35 and 11 messages respectively, strictly under the ceiling and **without orphaned tool messages**. Lesson learned: turn capacity is a property of the model's verbosity, making configurable ceilings and orphan validation essential.
 
@@ -309,7 +309,7 @@ Policy rule principle: Lives strictly in policy text, never hardcoded in code or
 Two test tiers, both relying on native `assert` and standard `main()` blocks without pytest:
 
 - **`test_agent.py`** (13 test functions, no LLM): deterministic logic covering ETL views and brand corrections, keyword routing for the 10 policy sections (including Section 4.4 exceptions like mouthpieces and custom setups), data tools, national shipping calculator (`calcular_frete`), identity validation across all 20 orders, installment arithmetic in `simular_pagamento` (including constant validation against manual text), and context window trimming. Includes `test_policies_sem_perda`, verifying that policy curation only changed formatting: every number, value, and email address from `policies_raw.md` is preserved. Runs in seconds on any environment.
-- **`test_live.py`** (44 test cases × k rounds against LM Studio): end-to-end evaluation where each scenario asserts customer dialogue turns, expected tool invocations, and mandatory/forbidden response substrings. Covers discontinued vs. out-of-stock items (§7.3), customized items ineligible for return (§4.4), refusal of split payments under R$ 2,000 (§3.1), Campo Grande free shipping threshold at exactly R$ 500 (§5.1), resistance to prompt injections demanding full customer email dumps, and the 90-day statutory warranty (§8.1) calculated from receipt rather than purchase. Generates [`eval_report.md`](eval_report.md) with pass rates and latencies (median and worst-case) per scenario.
+- **`test_live.py`** (44 test cases × k rounds against LM Studio): end-to-end evaluation where each scenario asserts customer dialogue turns, expected tool invocations, and mandatory/forbidden response substrings. Covers discontinued vs. out-of-stock items (§7.3), customized items ineligible for return (§4.4), refusal of split payments under R$ 2,000 (§3.1), Campo Grande free shipping threshold at exactly R$ 500 (§5.1), resistance to prompt injections demanding full customer email dumps, and the 90-day statutory warranty (§8.1) calculated from receipt rather than purchase. Generates [`eval_report.md`](docs/eval_report.md) with pass rates and latencies (median and worst-case) per scenario.
 
 </details>
 
@@ -366,7 +366,7 @@ The final provision of §5.2 (oversized instruments may require custom freight q
 - **Tool calling reliability depends on local model capacity.** Weaker models may answer price/inventory without calling tools or fail to refuse out-of-scope queries.
 - **Single concurrent user by design.** The prototype runs locally: `@st.cache_resource` instantiates **one** agent per process, the checkpointer opens **one** SQLite connection (`check_same_thread=False`), and LM Studio processes requests sequentially. Multi-user concurrency would require a dedicated serving backend, connection pools, and authenticated sessions.
 - **Unbounded history growth without TTL.** `SqliteSaver` captures full state on every step: after comprehensive testing, `emporio.db` reached 95 MB and 1,905 checkpoints for 65 products and 20 orders. In production, this requires expiration policies or a separate store.
-- **Inference latency vs. inquiry volume.** Median latency of 32s per case, up to 177s worst-case, across 87 non-streamed test runs ([`eval_report.md`](eval_report.md)). Smaller models respond in seconds but compromise tool accuracy.
+- **Inference latency vs. inquiry volume.** Median latency of 32s per case, up to 177s worst-case, across 87 non-streamed test runs ([`eval_report.md`](docs/eval_report.md)). Smaller models respond in seconds but compromise tool accuracy.
 - **Agent has no clock awareness.** Context injects the reference *date*, never the *time*. Policy §7.1 requests stating reopening hours when contacted after hours: the agent can state operating hours (§2), but does not know if the store is currently open.
 - **Complaints are not stored.** Policy §7.3 specifies "listen with empathy, register, and forward to management". The agent listens and forwards, but persists nothing: database access is read-only and no ticketing table exists. The 24-business-hour SLA is communicated accurately.
 - **No tool to prepare or submit return orders.** While the agent verifies remorse eligibility and policies, there is currently no write tool (`preparar_devolucao`) to register or initiate returns in the system. The agent must guide customers to support channels rather than promising direct system execution.

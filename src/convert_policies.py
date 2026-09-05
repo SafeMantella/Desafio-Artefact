@@ -12,7 +12,7 @@ import pymupdf4llm
 from config import DATA_DIR, ROOT
 
 PDF = DATA_DIR / "políticas_da_loja.pdf"
-OUT = ROOT / "policies_raw.md"
+OUT = ROOT / "docs" / "policies_raw.md"
 
 _LIXO = re.compile(r"^(Página \d+|\*\*Empório da Música\*\* Manual de Políticas e Procedimentos)\s*$")
 

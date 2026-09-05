@@ -1,12 +1,16 @@
-"""Checks assert-based, sem framework. Rode:  python test_agent.py
+"""Checks assert-based, sem framework. Rode:  python tests/test_agent.py
 
 Cobre a lógica não-trivial: views do ETL, retrieval de política e as tools de dados
 (incluindo a verificação leve de identidade). Não exercita o LLM.
 """
 import re
 import sqlite3
+import sys
 import unicodedata
 from datetime import date
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 from config import DATA_REFERENCE_DATE, DB_PATH, POLICIES_PATH, ROOT
 from tools import buscar_produtos, consultar_politica, detalhe_produto, status_pedido
@@ -71,7 +75,7 @@ def test_policies_sem_perda():
         return {tok.strip(".,;:") for tok in
                 re.findall(r"\d+[\d.,]*%?|[\w.+-]+@[\w.-]+", t)} - {""}
 
-    bruto = duros((ROOT / "policies_raw.md").read_text(encoding="utf-8"))
+    bruto = duros((ROOT / "docs" / "policies_raw.md").read_text(encoding="utf-8"))
     curado = duros(POLICIES_PATH.read_text(encoding="utf-8"))
     assert not (bruto - curado), f"a curadoria perdeu: {sorted(bruto - curado)}"
 
